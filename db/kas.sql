@@ -11,6 +11,24 @@ BEGIN
     END IF;
 END $$;
 
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash CHAR(64) NOT NULL,
+    nama_lengkap VARCHAR(100),
+    role VARCHAR(20) NOT NULL DEFAULT 'admin',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    last_login_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT users_username_format CHECK (username ~ '^[A-Za-z0-9._-]+$'),
+    CONSTRAINT users_password_hash_sha256 CHECK (password_hash ~ '^[A-Fa-f0-9]{64}$'),
+    CONSTRAINT users_role_allowed CHECK (role IN ('admin'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_active_username
+    ON users (is_active, username);
+
 CREATE TABLE IF NOT EXISTS kas_transaksi (
     id BIGSERIAL PRIMARY KEY,
     tanggal DATE NOT NULL,
@@ -41,6 +59,16 @@ BEGIN
         WHEN 7 THEN 'Minggu'
     END;
 
+    NEW.updated_at := NOW();
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION set_users_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
     NEW.updated_at := NOW();
     RETURN NEW;
 END;
@@ -87,6 +115,12 @@ BEFORE INSERT OR UPDATE ON kas_transaksi
 FOR EACH ROW
 EXECUTE FUNCTION set_kas_fields();
 
+DROP TRIGGER IF EXISTS trg_users_set_updated_at ON users;
+CREATE TRIGGER trg_users_set_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION set_users_updated_at();
+
 DROP TRIGGER IF EXISTS trg_kas_recompute_saldo ON kas_transaksi;
 CREATE TRIGGER trg_kas_recompute_saldo
 AFTER INSERT OR UPDATE OR DELETE ON kas_transaksi
@@ -104,3 +138,7 @@ EXECUTE FUNCTION recompute_kas_saldo();
 -- SELECT id, tanggal, hari, keterangan, jenis, jumlah, saldo
 -- FROM kas_transaksi
 -- ORDER BY tanggal, id;
+--
+-- Contoh insert user:
+-- INSERT INTO users (username, password_hash, nama_lengkap)
+-- VALUES ('admin', 'isikan_hash_sha256_64_karakter_di_sini', 'Administrator');

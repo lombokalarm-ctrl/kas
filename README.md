@@ -171,6 +171,7 @@ Aplikasi bisa diakses di:
 ## Catatan Production
 
 - File `db/kas.sql` otomatis dijalankan saat volume database pertama kali dibuat.
+- Untuk database yang sudah terlanjur berjalan, gunakan `db/add-users-table.sql` bila ingin menambah tabel `users` tanpa reset volume.
 - Data PostgreSQL disimpan di volume Docker `kas-postgres-data`.
 - SSL certificate disimpan di volume `caddy-data`.
 - `.env` dan file lokal sensitif tidak ikut ke Git karena sudah di-ignore.
@@ -187,6 +188,7 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d --bui
 ## File Penting
 
 - `db/kas.sql`: schema database kas
+- `db/add-users-table.sql`: penambahan tabel `users` untuk database existing
 - `db/sample-data.sql`: contoh data opsional
 - `docker-compose.prod.yml`: stack production VPS dedicated
 - `docker-compose.vps.yml`: stack production aman untuk VPS existing dengan `nginx` host
