@@ -157,7 +157,6 @@ export function TransactionForm({
           <input
             type="text"
             inputMode="numeric"
-            pattern="[0-9]*"
             autoComplete="off"
             ref={jumlahInputRef}
             value={getFormattedJumlah(form.jumlah)}
