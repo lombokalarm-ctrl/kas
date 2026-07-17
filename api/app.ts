@@ -5,11 +5,15 @@ import express, {
 } from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import { existsSync } from 'node:fs'
+import path from 'node:path'
 import cashRoutes from './routes/cash.js'
 
 dotenv.config()
 
 const app: express.Application = express()
+const clientDistPath = path.resolve(process.cwd(), 'dist')
+const hasClientBuild = existsSync(path.join(clientDistPath, 'index.html'))
 
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
@@ -27,6 +31,10 @@ app.use(
   },
 )
 
+if (hasClientBuild) {
+  app.use(express.static(clientDistPath))
+}
+
 app.use((_error: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({
     success: false,
@@ -35,6 +43,11 @@ app.use((_error: Error, _req: Request, res: Response, _next: NextFunction) => {
 })
 
 app.use((req: Request, res: Response) => {
+  if (hasClientBuild && req.method === 'GET' && !req.path.startsWith('/api')) {
+    res.sendFile(path.join(clientDistPath, 'index.html'))
+    return
+  }
+
   res.status(404).json({
     success: false,
     error: 'API not found',

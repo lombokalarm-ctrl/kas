@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "client:dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run build:server && npm run build:client",
+    "build:client": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc --noEmit",
+    "start": "node build/server/api/server.js",
     "test": "vitest run",
     "server:dev": "nodemon",
     "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\""
