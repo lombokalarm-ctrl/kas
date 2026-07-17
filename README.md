@@ -93,6 +93,7 @@ Pada mode ini:
 - container `kas-app` hanya bind ke `127.0.0.1:${APP_PORT_HOST}`
 - tidak ada container `caddy`
 - domain `kas.apli.my.id` diarahkan melalui `nginx` host
+- untuk VPS saat ini, port yang direkomendasikan adalah `3012`
 
 ### 1. Siapkan DNS
 
@@ -122,6 +123,7 @@ Contoh isi `.env.production`:
 
 ```env
 APP_DOMAIN=kas.apli.my.id
+APP_PORT_HOST=3012
 LETSENCRYPT_EMAIL=admin@apli.my.id
 POSTGRES_DB=kas
 POSTGRES_USER=postgres
