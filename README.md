@@ -65,14 +65,34 @@ Konfigurasi yang sudah disiapkan:
 
 - `Dockerfile`
 - `docker-compose.prod.yml`
+- `docker-compose.vps.yml`
 - `deploy/Caddyfile`
+- `deploy/nginx/kas.apli.my.id.conf`
 - `.env.production.example`
 
-Arsitektur deploy:
+Arsitektur deploy umum:
 
 - `app`: container Node.js untuk API + frontend production
 - `db`: PostgreSQL
 - `caddy`: reverse proxy + SSL otomatis Let's Encrypt
+
+### Opsi A: VPS Baru / Dedicated
+
+Gunakan file berikut bila VPS belum punya reverse proxy lain dan port `80/443` masih kosong:
+
+- `docker-compose.prod.yml`
+
+### Opsi B: VPS Existing Dengan Nginx Host
+
+Gunakan file berikut bila VPS sudah punya banyak website dan `nginx` host sudah memakai port `80/443`:
+
+- `docker-compose.vps.yml`
+
+Pada mode ini:
+
+- container `kas-app` hanya bind ke `127.0.0.1:${APP_PORT_HOST}`
+- tidak ada container `caddy`
+- domain `kas.apli.my.id` diarahkan melalui `nginx` host
 
 ### 1. Siapkan DNS
 
@@ -110,18 +130,39 @@ POSTGRES_PASSWORD=password_yang_kuat
 
 ### 4. Jalankan Docker Compose
 
+Untuk VPS baru / dedicated:
+
 ```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+```
+
+Untuk VPS existing dengan `nginx` host:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.vps.yml up -d --build
 ```
 
 ### 5. Cek Status Container
 
 ```bash
-docker compose --env-file .env.production -f docker-compose.prod.yml ps
-docker compose --env-file .env.production -f docker-compose.prod.yml logs -f
+docker compose --env-file .env.production -f docker-compose.vps.yml ps
+docker compose --env-file .env.production -f docker-compose.vps.yml logs -f
 ```
 
-Jika DNS sudah mengarah benar dan port `80/443` terbuka, Caddy akan otomatis menerbitkan SSL dan aplikasi bisa diakses di:
+Jika memakai mode VPS baru / dedicated, Caddy akan otomatis menerbitkan SSL.
+
+Jika memakai mode VPS existing dengan `nginx` host, tambahkan konfigurasi site:
+
+```bash
+cp deploy/nginx/kas.apli.my.id.conf /etc/nginx/sites-available/kas.apli.my.id.conf
+ln -s /etc/nginx/sites-available/kas.apli.my.id.conf /etc/nginx/sites-enabled/kas.apli.my.id.conf
+nginx -t
+systemctl reload nginx
+```
+
+Setelah itu aktifkan SSL sesuai pola yang sudah Anda pakai di server.
+
+Aplikasi bisa diakses di:
 
 - `https://kas.apli.my.id`
 
@@ -145,6 +186,8 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d --bui
 
 - `db/kas.sql`: schema database kas
 - `db/sample-data.sql`: contoh data opsional
-- `docker-compose.prod.yml`: stack production VPS
+- `docker-compose.prod.yml`: stack production VPS dedicated
+- `docker-compose.vps.yml`: stack production aman untuk VPS existing dengan `nginx` host
 - `deploy/Caddyfile`: reverse proxy domain + SSL
+- `deploy/nginx/kas.apli.my.id.conf`: contoh reverse proxy `nginx` host ke `kas-app`
 - `api/app.ts`: Express app + static frontend serving
