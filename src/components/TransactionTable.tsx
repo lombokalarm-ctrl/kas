@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { CashTransaction } from '../../shared/cash'
 import {
   formatCurrency,
@@ -5,15 +6,31 @@ import {
   formatSignedThousandNumber,
 } from '@/utils/format'
 import { cn } from '@/lib/utils'
+import { EditTransactionDialog } from '@/components/EditTransactionDialog'
+import type { UpdateCashTransactionRequest } from '../../shared/cash'
+import type { UserRole } from '../../shared/auth'
 
 interface TransactionTableProps {
   items: CashTransaction[]
   isLoading: boolean
+  userRole: UserRole
+  isSubmitting: boolean
+  onUpdateTransaction: (id: number, payload: UpdateCashTransactionRequest) => Promise<boolean>
 }
 
-export function TransactionTable({ items, isLoading }: TransactionTableProps) {
+export function TransactionTable({
+  items,
+  isLoading,
+  userRole,
+  isSubmitting,
+  onUpdateTransaction,
+}: TransactionTableProps) {
+  const [editingItem, setEditingItem] = useState<CashTransaction | null>(null)
+  const canEdit = userRole === 'owner'
+
   return (
-    <section className="overflow-hidden rounded-[24px] border border-zinc-900/10 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:rounded-[28px] md:rounded-[32px]">
+    <>
+      <section className="overflow-hidden rounded-[24px] border border-zinc-900/10 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:rounded-[28px] md:rounded-[32px]">
       <div className="border-b border-zinc-100 px-4 py-4 sm:px-5 sm:py-4 md:px-6 md:py-5">
         <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 sm:text-[11px] sm:tracking-[0.24em]">
           Buku Mutasi
@@ -46,16 +63,33 @@ export function TransactionTable({ items, isLoading }: TransactionTableProps) {
                   </p>
                   <p className="mt-0.5 text-[11px] text-zinc-500">{item.hari}</p>
                 </div>
-                <p
-                  className={cn(
-                    'shrink-0 text-sm font-semibold',
-                    item.jenis === 'masuk' ? 'text-emerald-700' : 'text-rose-700',
+                <div className="flex shrink-0 items-start gap-2">
+                  <p
+                    className={cn(
+                      'text-sm font-semibold',
+                      item.jenis === 'masuk' ? 'text-emerald-700' : 'text-rose-700',
+                    )}
+                  >
+                    {formatSignedThousandNumber(Number(item.jumlah), item.jenis)}
+                  </p>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingItem(item)}
+                      className="rounded-lg border border-zinc-200 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600"
+                    >
+                      Edit
+                    </button>
                   )}
-                >
-                  {formatSignedThousandNumber(Number(item.jumlah), item.jenis)}
-                </p>
+                </div>
               </div>
               <p className="mt-2 text-sm text-zinc-700">{item.keterangan}</p>
+              {item.catatan_edit && (
+                <p className="mt-1 text-[11px] text-amber-700">
+                  Edit: {item.catatan_edit}
+                  {item.edited_by_username ? ` (${item.edited_by_username})` : ''}
+                </p>
+              )}
               <p className="mt-2 text-xs font-semibold text-zinc-500">
                 Saldo: <span className="text-zinc-800">{formatCurrency(Number(item.saldo))}</span>
               </p>
@@ -101,14 +135,33 @@ export function TransactionTable({ items, isLoading }: TransactionTableProps) {
                     {formatDisplayDate(item.tanggal)}
                   </td>
                   <td className="px-3 py-3 text-zinc-600 lg:px-4 lg:py-4">{item.hari}</td>
-                  <td className="px-3 py-3 text-zinc-700 lg:px-4 lg:py-4">{item.keterangan}</td>
+                  <td className="px-3 py-3 text-zinc-700 lg:px-4 lg:py-4">
+                    <div>{item.keterangan}</div>
+                    {item.catatan_edit && (
+                      <div className="mt-1 text-[11px] text-amber-700">
+                        Edit: {item.catatan_edit}
+                        {item.edited_by_username ? ` (${item.edited_by_username})` : ''}
+                      </div>
+                    )}
+                  </td>
                   <td
                     className={cn(
                       'px-3 py-3 text-right font-semibold lg:px-4 lg:py-4',
                       item.jenis === 'masuk' ? 'text-emerald-700' : 'text-rose-700',
                     )}
                   >
-                    {formatSignedThousandNumber(Number(item.jumlah), item.jenis)}
+                    <div className="flex items-center justify-end gap-2">
+                      <span>{formatSignedThousandNumber(Number(item.jumlah), item.jenis)}</span>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingItem(item)}
+                          className="rounded-lg border border-zinc-200 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right font-bold text-emerald-950 lg:px-6 lg:py-4">
                     {formatCurrency(Number(item.saldo))}
@@ -125,6 +178,22 @@ export function TransactionTable({ items, isLoading }: TransactionTableProps) {
           </tbody>
         </table>
       </div>
-    </section>
+      </section>
+
+      {editingItem && (
+        <EditTransactionDialog
+          item={editingItem}
+          isSubmitting={isSubmitting}
+          onClose={() => setEditingItem(null)}
+          onSubmit={async (payload) => {
+            const ok = await onUpdateTransaction(editingItem.id, payload)
+
+            if (ok) {
+              setEditingItem(null)
+            }
+          }}
+        />
+      )}
+    </>
   )
 }

@@ -172,6 +172,7 @@ Aplikasi bisa diakses di:
 
 - File `db/kas.sql` otomatis dijalankan saat volume database pertama kali dibuat.
 - Untuk database yang sudah terlanjur berjalan, gunakan `db/add-users-table.sql` bila ingin menambah tabel `users` tanpa reset volume.
+- Script `db/add-users-table.sql` juga menambahkan role `staff`, `admin`, `owner` serta kolom catatan edit transaksi untuk koreksi oleh `owner`.
 - Data PostgreSQL disimpan di volume Docker `kas-postgres-data`.
 - SSL certificate disimpan di volume `caddy-data`.
 - `.env` dan file lokal sensitif tidak ikut ke Git karena sudah di-ignore.
@@ -195,3 +196,18 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d --bui
 - `deploy/Caddyfile`: reverse proxy domain + SSL
 - `deploy/nginx/kas.apli.my.id.conf`: contoh reverse proxy `nginx` host ke `kas-app`
 - `api/app.ts`: Express app + static frontend serving
+
+## Login dan Role
+
+- `staff`: bisa login dan input transaksi baru.
+- `admin`: bisa login dan input transaksi baru.
+- `owner`: bisa login, input transaksi, dan edit transaksi yang salah dengan catatan edit wajib.
+
+Contoh membuat user:
+
+```sql
+INSERT INTO users (username, password_hash, nama_lengkap, role)
+VALUES
+  ('staff1', 'hash_sha256_password', 'Staff Kasir', 'staff'),
+  ('owner', 'hash_sha256_password', 'Pemilik', 'owner');
+```

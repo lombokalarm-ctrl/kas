@@ -7,6 +7,9 @@ describe('TransactionTable', () => {
     render(
       <TransactionTable
         isLoading={false}
+        userRole="owner"
+        isSubmitting={false}
+        onUpdateTransaction={async () => true}
         items={[
           {
             id: 1,
@@ -16,6 +19,10 @@ describe('TransactionTable', () => {
             jenis: 'masuk',
             jumlah: 1000000,
             saldo: 1000000,
+            catatan_edit: null,
+            edited_at: null,
+            edited_by_user_id: null,
+            edited_by_username: null,
             created_at: '2026-07-17T00:00:00.000Z',
             updated_at: '2026-07-17T00:00:00.000Z',
           },
@@ -23,12 +30,13 @@ describe('TransactionTable', () => {
       />,
     )
 
-    expect(screen.getByText('17-07-2026')).toBeInTheDocument()
-    expect(screen.getByText('Modal awal')).toBeInTheDocument()
-    expect(screen.getByText('+1.000.000')).toBeInTheDocument()
+    expect(screen.getAllByText('17-07-2026')).toHaveLength(2)
+    expect(screen.getAllByText('Modal awal')).toHaveLength(2)
+    expect(screen.getAllByText('+1.000.000').length).toBeGreaterThan(0)
     expect(screen.queryByText('Jenis')).not.toBeInTheDocument()
     expect(
-      screen.getByText((content) => content.includes('Rp') && content.includes('1.000.000')),
-    ).toBeInTheDocument()
+      screen.getAllByText((content) => content.includes('Rp') && content.includes('1.000.000'))
+        .length,
+    ).toBeGreaterThan(0)
   })
 })

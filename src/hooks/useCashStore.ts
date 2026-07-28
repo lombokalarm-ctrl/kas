@@ -5,7 +5,9 @@ import type {
   CashSummary,
   CashTransaction,
   CreateCashTransactionRequest,
+  UpdateCashTransactionRequest,
 } from '../../shared/cash'
+import { getStoredToken } from '@/lib/auth-storage'
 
 const defaultSummary: CashSummary = {
   saldoTerakhir: 0,
@@ -26,6 +28,10 @@ interface CashStore {
   clearFeedback: () => void
   fetchTransactions: (filters?: CashFilters) => Promise<void>
   createTransaction: (payload: CreateCashTransactionRequest) => Promise<boolean>
+  updateTransaction: (
+    id: number,
+    payload: UpdateCashTransactionRequest,
+  ) => Promise<{ ok: boolean; message?: string }>
 }
 
 function toQueryString(filters: CashFilters) {
@@ -41,6 +47,16 @@ function toQueryString(filters: CashFilters) {
 
   const query = params.toString()
   return query ? `?${query}` : ''
+}
+
+function getAuthHeaders() {
+  const token = getStoredToken()
+
+  return token
+    ? {
+        Authorization: `Bearer ${token}`,
+      }
+    : {}
 }
 
 export const useCashStore = create<CashStore>((set, get) => ({
@@ -67,7 +83,11 @@ export const useCashStore = create<CashStore>((set, get) => ({
     })
 
     try {
-      const response = await fetch(`/api/cash/transactions${toQueryString(filters)}`)
+      const response = await fetch(`/api/cash/transactions${toQueryString(filters)}`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      })
 
       if (!response.ok) {
         throw new Error('Gagal memuat data kas.')
@@ -95,6 +115,7 @@ export const useCashStore = create<CashStore>((set, get) => ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(payload),
       })
@@ -119,6 +140,44 @@ export const useCashStore = create<CashStore>((set, get) => ({
       })
 
       return false
+    }
+  },
+  updateTransaction: async (id, payload) => {
+    set({ isSubmitting: true, error: null, successMessage: null })
+
+    try {
+      const response = await fetch(`/api/cash/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const data = (await response.json()) as { message?: string }
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Gagal memperbarui transaksi.')
+      }
+
+      await get().fetchTransactions(get().filters)
+
+      set({
+        isSubmitting: false,
+        successMessage: 'Transaksi berhasil diperbarui.',
+      })
+
+      return { ok: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Terjadi kesalahan.'
+
+      set({
+        isSubmitting: false,
+        error: message,
+      })
+
+      return { ok: false, message }
     }
   },
 }))

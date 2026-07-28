@@ -1,6 +1,7 @@
 import express from 'express'
 import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Request, Response, NextFunction } from 'express'
 
 const { queryMock, connectMock } = vi.hoisted(() => ({
   queryMock: vi.fn(),
@@ -12,6 +13,25 @@ vi.mock('../db.js', () => ({
     query: queryMock,
     connect: connectMock,
   },
+}))
+
+vi.mock('../lib/auth.js', () => ({
+  requireAuth: (req: Request, _res: Response, next: NextFunction) => {
+    Object.assign(req, {
+      user: {
+        id: 1,
+        username: 'owner',
+        namaLengkap: 'Pemilik',
+        role: 'owner',
+      },
+    })
+    next()
+  },
+  requireRoles:
+    () =>
+    (_req: Request, _res: Response, next: NextFunction) => {
+      next()
+    },
 }))
 
 import cashRoutes from './cash'
@@ -38,6 +58,10 @@ describe('cashRoutes', () => {
             jenis: 'masuk',
             jumlah: 1000000,
             saldo: 1000000,
+            catatan_edit: null,
+            edited_at: null,
+            edited_by_user_id: null,
+            edited_by_username: null,
             created_at: '2026-07-17T00:00:00.000Z',
             updated_at: '2026-07-17T00:00:00.000Z',
           },

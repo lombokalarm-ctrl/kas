@@ -16,14 +16,14 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) NOT NULL UNIQUE,
     password_hash CHAR(64) NOT NULL,
     nama_lengkap VARCHAR(100),
-    role VARCHAR(20) NOT NULL DEFAULT 'admin',
+    role VARCHAR(20) NOT NULL DEFAULT 'staff',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     last_login_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT users_username_format CHECK (username ~ '^[A-Za-z0-9._-]+$'),
     CONSTRAINT users_password_hash_sha256 CHECK (password_hash ~ '^[A-Fa-f0-9]{64}$'),
-    CONSTRAINT users_role_allowed CHECK (role IN ('admin'))
+    CONSTRAINT users_role_allowed CHECK (role IN ('staff', 'admin', 'owner'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_active_username
@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS kas_transaksi (
     jenis kas_jenis NOT NULL,
     jumlah NUMERIC(14,2) NOT NULL CHECK (jumlah > 0),
     saldo NUMERIC(14,2) NOT NULL DEFAULT 0,
+    catatan_edit TEXT,
+    edited_at TIMESTAMPTZ,
+    edited_by_user_id BIGINT REFERENCES users (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

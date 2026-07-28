@@ -4,6 +4,7 @@ import { FilterBar } from '@/components/FilterBar'
 import { SummaryCard } from '@/components/SummaryCard'
 import { TransactionForm } from '@/components/TransactionForm'
 import { TransactionTable } from '@/components/TransactionTable'
+import { useAuthStore } from '@/hooks/useAuthStore'
 import { useCashStore } from '@/hooks/useCashStore'
 
 export default function Home() {
@@ -18,8 +19,10 @@ export default function Home() {
     fetchTransactions,
     setFilters,
     createTransaction,
+    updateTransaction,
     clearFeedback,
   } = useCashStore()
+  const { user, logout } = useAuthStore()
 
   useEffect(() => {
     fetchTransactions()
@@ -29,9 +32,26 @@ export default function Home() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(20,83,45,0.12),_transparent_35%),linear-gradient(180deg,#f6f0e6_0%,#fbfaf7_45%,#f1ece3_100%)] px-3 py-4 text-zinc-950 sm:px-4 sm:py-6 md:px-8">
       <div className="mx-auto max-w-7xl">
         <section className="mb-4 sm:mb-5">
-          <h1 className="font-display text-2xl text-zinc-950 sm:text-3xl md:text-4xl">
-            Catatan Kas Harian
-          </h1>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="font-display text-2xl text-zinc-950 sm:text-3xl md:text-4xl">
+                Catatan Kas Harian
+              </h1>
+              {user && (
+                <p className="mt-1 text-xs text-zinc-600 sm:text-sm">
+                  Login sebagai <span className="font-semibold">{user.username}</span> · role{' '}
+                  <span className="font-semibold uppercase">{user.role}</span>
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-700 sm:text-xs"
+            >
+              Logout
+            </button>
+          </div>
         </section>
 
         <section className="mb-4 sm:mb-6">
@@ -105,7 +125,18 @@ export default function Home() {
           />
         </section>
 
-        <TransactionTable items={items} isLoading={isLoading} />
+        {user && (
+          <TransactionTable
+            items={items}
+            isLoading={isLoading}
+            userRole={user.role}
+            isSubmitting={isSubmitting}
+            onUpdateTransaction={async (id, payload) => {
+              const result = await updateTransaction(id, payload)
+              return result.ok
+            }}
+          />
+        )}
       </div>
     </main>
   )

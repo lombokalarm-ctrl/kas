@@ -7,6 +7,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
+import authRoutes from './routes/auth.js'
 import cashRoutes from './routes/cash.js'
 
 dotenv.config()
@@ -19,6 +20,7 @@ app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
+app.use('/api/auth', authRoutes)
 app.use('/api/cash', cashRoutes)
 
 app.use(
