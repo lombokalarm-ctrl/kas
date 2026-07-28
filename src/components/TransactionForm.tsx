@@ -91,30 +91,30 @@ export function TransactionForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-[32px] border border-zinc-900/10 bg-white/90 p-6 shadow-[0_24px_80px_rgba(16,24,40,0.08)]"
+      className="rounded-[24px] border border-zinc-900/10 bg-white/90 p-4 shadow-[0_18px_50px_rgba(16,24,40,0.08)] sm:rounded-[28px] sm:p-5 md:rounded-[32px] md:p-6"
     >
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-2 text-sm text-zinc-700">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <label className="space-y-1.5 text-xs text-zinc-700 sm:space-y-2 sm:text-sm">
           <span>Tanggal</span>
           <input
             type="date"
             value={form.tanggal}
             onChange={(event) => setForm({ ...form, tanggal: event.target.value })}
-            className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-emerald-700 focus:bg-white"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition focus:border-emerald-700 focus:bg-white sm:rounded-2xl sm:px-4 sm:py-3"
             required
           />
         </label>
 
-        <div className="space-y-2 text-sm text-zinc-700">
+        <div className="space-y-1.5 text-xs text-zinc-700 sm:space-y-2 sm:text-sm">
           <span>Jenis transaksi</span>
-          <div className="grid grid-cols-2 rounded-2xl bg-zinc-100 p-1">
+          <div className="grid grid-cols-2 rounded-xl bg-zinc-100 p-1 sm:rounded-2xl">
             {(['masuk', 'keluar'] as CashType[]).map((jenis) => (
               <button
                 key={jenis}
                 type="button"
                 onClick={() => setForm({ ...form, jenis })}
                 className={cn(
-                  'rounded-[18px] px-4 py-3 text-sm font-medium capitalize transition',
+                  'rounded-lg px-2 py-2 text-xs font-medium capitalize transition sm:rounded-[18px] sm:px-4 sm:py-3 sm:text-sm',
                   form.jenis === jenis
                     ? 'bg-zinc-950 text-white shadow-sm'
                     : 'text-zinc-600 hover:text-zinc-950',
@@ -126,24 +126,24 @@ export function TransactionForm({
           </div>
         </div>
 
-        <label className="space-y-2 text-sm text-zinc-700 md:col-span-2">
+        <label className="col-span-2 space-y-1.5 text-xs text-zinc-700 sm:space-y-2 sm:text-sm">
           <span>Keterangan</span>
           <input
             type="text"
             value={form.keterangan}
             onChange={(event) => setForm({ ...form, keterangan: event.target.value })}
             placeholder="Contoh: Setoran modal, beli ATK, penjualan tunai"
-            className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-emerald-700 focus:bg-white"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition focus:border-emerald-700 focus:bg-white sm:rounded-2xl sm:px-4 sm:py-3"
             required
           />
         </label>
 
-        <label className="space-y-2 text-sm text-zinc-700 md:col-span-2">
+        <label className="col-span-2 space-y-1.5 text-xs text-zinc-700 sm:space-y-2 sm:text-sm">
           <span>Jumlah</span>
           <div className="relative">
             <span
               className={cn(
-                'pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold',
+                'pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg font-bold sm:left-4 sm:text-xl',
                 form.jenis === 'masuk' ? 'text-emerald-700' : 'text-rose-700',
               )}
             >
@@ -163,7 +163,7 @@ export function TransactionForm({
               }
               placeholder="0"
               className={cn(
-                'w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-xl font-semibold outline-none transition focus:border-emerald-700 focus:bg-white',
+                'w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2 pl-8 pr-3 text-lg font-semibold outline-none transition focus:border-emerald-700 focus:bg-white sm:rounded-2xl sm:py-3 sm:pl-10 sm:pr-4 sm:text-xl',
                 form.jenis === 'masuk' ? 'text-emerald-700' : 'text-rose-700',
               )}
               required
@@ -175,7 +175,7 @@ export function TransactionForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-6 w-full rounded-2xl bg-emerald-950 px-5 py-4 text-sm font-semibold uppercase tracking-[0.28em] text-amber-50 transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 w-full rounded-xl bg-emerald-950 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-amber-50 transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-6 sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm sm:tracking-[0.28em]"
       >
         {isSubmitting ? 'Menyimpan...' : 'Simpan transaksi'}
       </button>

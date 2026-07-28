@@ -26,15 +26,15 @@ export default function Home() {
   }, [fetchTransactions])
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(20,83,45,0.12),_transparent_35%),linear-gradient(180deg,#f6f0e6_0%,#fbfaf7_45%,#f1ece3_100%)] px-4 py-8 text-zinc-950 md:px-8">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(20,83,45,0.12),_transparent_35%),linear-gradient(180deg,#f6f0e6_0%,#fbfaf7_45%,#f1ece3_100%)] px-3 py-4 text-zinc-950 sm:px-4 sm:py-6 md:px-8">
       <div className="mx-auto max-w-7xl">
-        <section className="mb-6">
-          <h1 className="font-display text-3xl text-zinc-950 md:text-4xl">
+        <section className="mb-4 sm:mb-5">
+          <h1 className="font-display text-2xl text-zinc-950 sm:text-3xl md:text-4xl">
             Catatan Kas Harian
           </h1>
         </section>
 
-        <section className="mb-8">
+        <section className="mb-4 sm:mb-6">
           <TransactionForm
             isSubmitting={isSubmitting}
             onSubmit={async (payload) => {
@@ -44,7 +44,7 @@ export default function Home() {
           />
         </section>
 
-        <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="mb-4 grid grid-cols-2 gap-3 sm:mb-6 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             title="Saldo Terakhir"
             value={summary.saldoTerakhir}
@@ -73,9 +73,9 @@ export default function Home() {
         </section>
 
         {(error || successMessage) && (
-          <section className="mb-6">
+          <section className="mb-4 sm:mb-6">
             <div
-              className={`rounded-2xl border px-5 py-4 text-sm shadow-sm ${
+              className={`rounded-xl border px-4 py-3 text-xs shadow-sm sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm ${
                 error
                   ? 'border-rose-200 bg-rose-50 text-rose-900'
                   : 'border-emerald-200 bg-emerald-50 text-emerald-900'
@@ -86,7 +86,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={clearFeedback}
-                  className="text-xs font-semibold uppercase tracking-[0.22em]"
+                  className="text-[10px] font-semibold uppercase tracking-[0.18em] sm:text-xs sm:tracking-[0.22em]"
                 >
                   Tutup
                 </button>
@@ -95,7 +95,7 @@ export default function Home() {
           </section>
         )}
 
-        <section className="mb-6">
+        <section className="mb-4 sm:mb-6">
           <FilterBar
             filters={filters}
             onApply={(nextFilters) => {

@@ -14,45 +14,47 @@ export function FilterBar({ filters, onApply }: FilterBarProps) {
   }, [filters])
 
   return (
-    <section className="rounded-[28px] border border-zinc-900/10 bg-[#f7f2e8] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <section className="rounded-[20px] border border-zinc-900/10 bg-[#f7f2e8] p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] sm:rounded-[24px] sm:p-5 md:rounded-[28px]">
+      <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.3em] text-zinc-600">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600 sm:text-[11px] sm:tracking-[0.24em]">
             Filter Mutasi
           </p>
-          <h3 className="mt-2 font-display text-2xl text-zinc-950">
+          <h3 className="mt-1 font-display text-lg text-zinc-950 sm:mt-2 sm:text-2xl">
             Pilih rentang tanggal
           </h3>
         </div>
 
-        <div className="rounded-full bg-white px-4 py-2 text-xs uppercase tracking-[0.28em] text-zinc-500">
+        <div className="hidden rounded-full bg-white px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-zinc-500 sm:block sm:text-xs sm:tracking-[0.24em]">
           Lokal
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-        <input
-          type="date"
-          value={localFilters.startDate || ''}
-          onChange={(event) =>
-            setLocalFilters({ ...localFilters, startDate: event.target.value })
-          }
-          className="min-w-0 flex-1 rounded-2xl border border-zinc-200 bg-white px-4 py-3 outline-none transition focus:border-emerald-700"
-        />
-        <span className="text-center text-sm font-semibold text-zinc-600 lg:flex-none">s/d</span>
-        <input
-          type="date"
-          value={localFilters.endDate || ''}
-          onChange={(event) =>
-            setLocalFilters({ ...localFilters, endDate: event.target.value })
-          }
-          className="min-w-0 flex-1 rounded-2xl border border-zinc-200 bg-white px-4 py-3 outline-none transition focus:border-emerald-700"
-        />
-        <div className="flex gap-3 lg:flex-none">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
+          <input
+            type="date"
+            value={localFilters.startDate || ''}
+            onChange={(event) =>
+              setLocalFilters({ ...localFilters, startDate: event.target.value })
+            }
+            className="min-w-0 rounded-xl border border-zinc-200 bg-white px-2.5 py-2 text-xs outline-none transition focus:border-emerald-700 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm"
+          />
+          <span className="text-center text-xs font-semibold text-zinc-600 sm:text-sm">s/d</span>
+          <input
+            type="date"
+            value={localFilters.endDate || ''}
+            onChange={(event) =>
+              setLocalFilters({ ...localFilters, endDate: event.target.value })
+            }
+            className="min-w-0 rounded-xl border border-zinc-200 bg-white px-2.5 py-2 text-xs outline-none transition focus:border-emerald-700 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3 lg:flex-none">
           <button
             type="button"
             onClick={() => onApply(localFilters)}
-            className="flex-1 rounded-2xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
+            className="rounded-xl bg-zinc-950 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-zinc-800 sm:flex-1 sm:rounded-2xl sm:px-5 sm:py-3 sm:text-sm"
           >
             Terapkan
           </button>
@@ -63,7 +65,7 @@ export function FilterBar({ filters, onApply }: FilterBarProps) {
               setLocalFilters(reset)
               onApply(reset)
             }}
-            className="flex-1 rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-700 transition hover:border-zinc-950 hover:text-zinc-950"
+            className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs font-semibold text-zinc-700 transition hover:border-zinc-950 hover:text-zinc-950 sm:flex-1 sm:rounded-2xl sm:px-5 sm:py-3 sm:text-sm"
           >
             Reset
           </button>

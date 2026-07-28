@@ -34,18 +34,20 @@ export function SummaryCard({
   return (
     <article
       className={cn(
-        'rounded-[28px] border p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] transition-transform duration-300 hover:-translate-y-1',
+        'rounded-[20px] border p-3 shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:rounded-[24px] sm:p-4 md:p-5',
         toneMap[tone],
       )}
     >
-      <div className="mb-5 flex items-center justify-between">
-        <p className="text-[11px] uppercase tracking-[0.3em] opacity-70">{title}</p>
-        <span className={cn('rounded-full p-3', iconMap[tone])}>
-          <Icon className="h-4 w-4" />
+      <div className="mb-3 flex items-center justify-between sm:mb-4">
+        <p className="text-[10px] uppercase tracking-[0.18em] opacity-70 sm:text-[11px] sm:tracking-[0.24em]">
+          {title}
+        </p>
+        <span className={cn('rounded-full p-2 sm:p-2.5', iconMap[tone])}>
+          <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </span>
       </div>
 
-      <p className="font-display text-3xl leading-tight md:text-4xl">
+      <p className="font-display text-lg leading-tight sm:text-2xl md:text-3xl xl:text-4xl">
         {kind === 'currency' ? formatCurrency(value) : value.toLocaleString('id-ID')}
       </p>
     </article>
