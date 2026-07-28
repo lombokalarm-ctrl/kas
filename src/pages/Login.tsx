@@ -7,6 +7,7 @@ export default function Login() {
   const { login, isLoggingIn, error } = useAuthStore()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -30,11 +31,6 @@ export default function Login() {
           <p className="mt-2 text-sm text-zinc-600">
             Login dengan username dan password sesuai role pengguna.
           </p>
-          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            Login pertama default:
-            <span className="ml-1 font-semibold">owner</span> /
-            <span className="ml-1 font-semibold">owner123</span>
-          </div>
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
             <label className="block space-y-1.5 text-xs text-zinc-700 sm:text-sm">
@@ -51,14 +47,23 @@ export default function Login() {
 
             <label className="block space-y-1.5 text-xs text-zinc-700 sm:text-sm">
               <span>Password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-700 focus:bg-white"
-                autoComplete="current-password"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 pr-20 text-sm outline-none transition focus:border-emerald-700 focus:bg-white"
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600"
+                >
+                  {showPassword ? 'Sembunyi' : 'Lihat'}
+                </button>
+              </div>
             </label>
 
             {error && (
