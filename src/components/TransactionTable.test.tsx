@@ -25,7 +25,8 @@ describe('TransactionTable', () => {
 
     expect(screen.getByText('17-07-2026')).toBeInTheDocument()
     expect(screen.getByText('Modal awal')).toBeInTheDocument()
-    expect(screen.getByText('1.000.000')).toBeInTheDocument()
+    expect(screen.getByText('+1.000.000')).toBeInTheDocument()
+    expect(screen.queryByText('Jenis')).not.toBeInTheDocument()
     expect(
       screen.getByText((content) => content.includes('Rp') && content.includes('1.000.000')),
     ).toBeInTheDocument()

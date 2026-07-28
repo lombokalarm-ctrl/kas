@@ -2,7 +2,7 @@ import type { CashTransaction } from '../../shared/cash'
 import {
   formatCurrency,
   formatDisplayDate,
-  formatThousandNumber,
+  formatSignedThousandNumber,
 } from '@/utils/format'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +30,6 @@ export function TransactionTable({ items, isLoading }: TransactionTableProps) {
               <th className="px-6 py-4">Tanggal</th>
               <th className="px-4 py-4">Hari</th>
               <th className="px-4 py-4">Keterangan</th>
-              <th className="px-4 py-4">Jenis</th>
               <th className="px-4 py-4 text-right">Jumlah</th>
               <th className="px-6 py-4 text-right">Saldo</th>
             </tr>
@@ -39,7 +38,7 @@ export function TransactionTable({ items, isLoading }: TransactionTableProps) {
             {isLoading ? (
               Array.from({ length: 4 }).map((_, index) => (
                 <tr key={index} className="border-b border-zinc-100">
-                  <td className="px-6 py-4" colSpan={6}>
+                  <td className="px-6 py-4" colSpan={5}>
                     <div className="h-12 animate-pulse rounded-2xl bg-zinc-100" />
                   </td>
                 </tr>
@@ -58,20 +57,13 @@ export function TransactionTable({ items, isLoading }: TransactionTableProps) {
                   </td>
                   <td className="px-4 py-4 text-zinc-600">{item.hari}</td>
                   <td className="px-4 py-4 text-zinc-700">{item.keterangan}</td>
-                  <td className="px-4 py-4">
-                    <span
-                      className={cn(
-                        'inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]',
-                        item.jenis === 'masuk'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-rose-100 text-rose-800',
-                      )}
-                    >
-                      {item.jenis}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-right font-semibold text-zinc-900">
-                    {formatThousandNumber(Number(item.jumlah))}
+                  <td
+                    className={cn(
+                      'px-4 py-4 text-right font-semibold',
+                      item.jenis === 'masuk' ? 'text-emerald-700' : 'text-rose-700',
+                    )}
+                  >
+                    {formatSignedThousandNumber(Number(item.jumlah), item.jenis)}
                   </td>
                   <td className="px-6 py-4 text-right font-bold text-emerald-950">
                     {formatCurrency(Number(item.saldo))}
@@ -80,7 +72,7 @@ export function TransactionTable({ items, isLoading }: TransactionTableProps) {
               ))
             ) : (
               <tr>
-                <td className="px-6 py-12 text-center text-zinc-500" colSpan={6}>
+                <td className="px-6 py-12 text-center text-zinc-500" colSpan={5}>
                   Belum ada transaksi kas.
                 </td>
               </tr>

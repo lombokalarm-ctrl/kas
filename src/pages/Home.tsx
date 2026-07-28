@@ -28,21 +28,13 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(20,83,45,0.12),_transparent_35%),linear-gradient(180deg,#f6f0e6_0%,#fbfaf7_45%,#f1ece3_100%)] px-4 py-8 text-zinc-950 md:px-8">
       <div className="mx-auto max-w-7xl">
-        <section className="mb-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-[36px] border border-emerald-950/10 bg-[#133127] px-6 py-8 text-amber-50 shadow-[0_35px_100px_rgba(15,23,42,0.18)] md:px-8">
-            <p className="text-[11px] uppercase tracking-[0.36em] text-amber-200/80">
-              Buku Besar Kas
-            </p>
-            <h1 className="mt-4 max-w-2xl font-display text-4xl leading-tight md:text-6xl">
-              Pencatatan kas sederhana, padat, dan langsung tersimpan ke PostgreSQL.
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-amber-50/75 md:text-base">
-              Gunakan satu halaman ini untuk mencatat pemasukan dan pengeluaran,
-              memantau saldo berjalan, lalu meninjau mutasi harian tanpa berpindah
-              layar.
-            </p>
-          </div>
+        <section className="mb-6">
+          <h1 className="font-display text-3xl text-zinc-950 md:text-4xl">
+            Catatan Kas Harian
+          </h1>
+        </section>
 
+        <section className="mb-8">
           <TransactionForm
             isSubmitting={isSubmitting}
             onSubmit={async (payload) => {

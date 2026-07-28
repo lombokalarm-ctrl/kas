@@ -1,3 +1,5 @@
+import type { CashType } from '../../shared/cash'
+
 export function formatCurrency(value: number) {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -10,6 +12,11 @@ export function formatThousandNumber(value: number) {
   return new Intl.NumberFormat('id-ID', {
     maximumFractionDigits: 0,
   }).format(value || 0)
+}
+
+export function formatSignedThousandNumber(value: number, jenis: CashType) {
+  const prefix = jenis === 'masuk' ? '+' : '-'
+  return `${prefix}${formatThousandNumber(value)}`
 }
 
 export function formatDisplayDate(dateString: string) {

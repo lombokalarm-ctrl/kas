@@ -93,20 +93,6 @@ export function TransactionForm({
       onSubmit={handleSubmit}
       className="rounded-[32px] border border-zinc-900/10 bg-white/90 p-6 shadow-[0_24px_80px_rgba(16,24,40,0.08)]"
     >
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.32em] text-emerald-900/70">
-            Input Cepat
-          </p>
-          <h2 className="mt-2 font-display text-3xl text-zinc-950">
-            Catat transaksi kas
-          </h2>
-        </div>
-        <span className="rounded-full bg-amber-100 px-4 py-2 text-[11px] uppercase tracking-[0.3em] text-amber-900">
-          Harian
-        </span>
-      </div>
-
       <div className="grid gap-4 md:grid-cols-2">
         <label className="space-y-2 text-sm text-zinc-700">
           <span>Tanggal</span>
@@ -154,22 +140,35 @@ export function TransactionForm({
 
         <label className="space-y-2 text-sm text-zinc-700 md:col-span-2">
           <span>Jumlah</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            ref={jumlahInputRef}
-            value={getFormattedJumlah(form.jumlah)}
-            onChange={(event) =>
-              handleJumlahChange(
-                event.target.value,
-                event.target.selectionStart ?? event.target.value.length,
-              )
-            }
-            placeholder="0"
-            className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-xl font-semibold outline-none transition focus:border-emerald-700 focus:bg-white"
-            required
-          />
+          <div className="relative">
+            <span
+              className={cn(
+                'pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold',
+                form.jenis === 'masuk' ? 'text-emerald-700' : 'text-rose-700',
+              )}
+            >
+              {form.jenis === 'masuk' ? '+' : '-'}
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              ref={jumlahInputRef}
+              value={getFormattedJumlah(form.jumlah)}
+              onChange={(event) =>
+                handleJumlahChange(
+                  event.target.value,
+                  event.target.selectionStart ?? event.target.value.length,
+                )
+              }
+              placeholder="0"
+              className={cn(
+                'w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-xl font-semibold outline-none transition focus:border-emerald-700 focus:bg-white',
+                form.jenis === 'masuk' ? 'text-emerald-700' : 'text-rose-700',
+              )}
+              required
+            />
+          </div>
         </label>
       </div>
 
