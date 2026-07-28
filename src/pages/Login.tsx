@@ -30,6 +30,11 @@ export default function Login() {
           <p className="mt-2 text-sm text-zinc-600">
             Login dengan username dan password sesuai role pengguna.
           </p>
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            Login pertama default:
+            <span className="ml-1 font-semibold">owner</span> /
+            <span className="ml-1 font-semibold">owner123</span>
+          </div>
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
             <label className="block space-y-1.5 text-xs text-zinc-700 sm:text-sm">

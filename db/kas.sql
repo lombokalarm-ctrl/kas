@@ -29,6 +29,16 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_users_active_username
     ON users (is_active, username);
 
+INSERT INTO users (username, password_hash, nama_lengkap, role, is_active)
+VALUES (
+    'owner',
+    '43a0d17178a9d26c9e0fe9a74b0b45e38d32f27aed887a008a54bf6e033bf7b9',
+    'Owner Default',
+    'owner',
+    TRUE
+)
+ON CONFLICT (username) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS kas_transaksi (
     id BIGSERIAL PRIMARY KEY,
     tanggal DATE NOT NULL,

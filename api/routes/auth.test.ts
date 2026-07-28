@@ -2,6 +2,7 @@ import express from 'express'
 import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
+import { signAuthToken } from '../lib/auth'
 
 const { queryMock } = vi.hoisted(() => ({
   queryMock: vi.fn(),
@@ -48,5 +49,73 @@ describe('authRoutes', () => {
     expect(response.status).toBe(200)
     expect(response.body.user.username).toBe('owner')
     expect(response.body.token).toBeTruthy()
+  })
+
+  it('mengembalikan daftar user untuk owner', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 1,
+          username: 'owner',
+          nama_lengkap: 'Pemilik',
+          role: 'owner',
+          is_active: true,
+          last_login_at: null,
+          created_at: '2026-07-28T10:00:00+00',
+        },
+      ],
+    })
+
+    const token = signAuthToken({
+      id: 1,
+      username: 'owner',
+      namaLengkap: 'Pemilik',
+      role: 'owner',
+    })
+
+    const response = await request(app)
+      .get('/api/auth/users')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(response.status).toBe(200)
+    expect(response.body.items).toHaveLength(1)
+    expect(response.body.items[0].username).toBe('owner')
+  })
+
+  it('menambah user baru untuk owner', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 2,
+          username: 'staff1',
+          nama_lengkap: 'Staff Kas',
+          role: 'staff',
+          is_active: true,
+          last_login_at: null,
+          created_at: '2026-07-28T10:00:00+00',
+        },
+      ],
+    })
+
+    const token = signAuthToken({
+      id: 1,
+      username: 'owner',
+      namaLengkap: 'Pemilik',
+      role: 'owner',
+    })
+
+    const response = await request(app)
+      .post('/api/auth/users')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        username: 'staff1',
+        password: 'rahasia1',
+        namaLengkap: 'Staff Kas',
+        role: 'staff',
+      })
+
+    expect(response.status).toBe(201)
+    expect(response.body.username).toBe('staff1')
+    expect(response.body.role).toBe('staff')
   })
 })

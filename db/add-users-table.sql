@@ -30,6 +30,16 @@ ALTER TABLE users
 CREATE INDEX IF NOT EXISTS idx_users_active_username
     ON users (is_active, username);
 
+INSERT INTO users (username, password_hash, nama_lengkap, role, is_active)
+VALUES (
+    'owner',
+    '43a0d17178a9d26c9e0fe9a74b0b45e38d32f27aed887a008a54bf6e033bf7b9',
+    'Owner Default',
+    'owner',
+    TRUE
+)
+ON CONFLICT (username) DO NOTHING;
+
 ALTER TABLE kas_transaksi
     ADD COLUMN IF NOT EXISTS catatan_edit TEXT,
     ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ,
@@ -55,5 +65,5 @@ EXECUTE FUNCTION set_users_updated_at();
 -- Password wajib disimpan dalam bentuk hash SHA-256 64 karakter.
 -- Ganti nilai password_hash berikut dengan hash password asli.
 -- INSERT INTO users (username, password_hash, nama_lengkap, role)
--- VALUES ('owner', 'isikan_hash_sha256_64_karakter_di_sini', 'Pemilik', 'owner')
+-- VALUES ('owner2', 'isikan_hash_sha256_64_karakter_di_sini', 'Pemilik', 'owner')
 -- ON CONFLICT (username) DO NOTHING;

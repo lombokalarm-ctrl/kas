@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { ArrowDownCircle, ArrowUpCircle, BadgeDollarSign, Wallet } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { FilterBar } from '@/components/FilterBar'
 import { SummaryCard } from '@/components/SummaryCard'
 import { TransactionForm } from '@/components/TransactionForm'
@@ -44,13 +45,23 @@ export default function Home() {
                 </p>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => void logout()}
-              className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-700 sm:text-xs"
-            >
-              Logout
-            </button>
+            <div className="flex gap-2">
+              {user?.role === 'owner' && (
+                <Link
+                  to="/owner/users"
+                  className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-700 sm:text-xs"
+                >
+                  User
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-700 sm:text-xs"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </section>
 

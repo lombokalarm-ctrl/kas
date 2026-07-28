@@ -202,6 +202,14 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d --bui
 - `staff`: bisa login dan input transaksi baru.
 - `admin`: bisa login dan input transaksi baru.
 - `owner`: bisa login, input transaksi, dan edit transaksi yang salah dengan catatan edit wajib.
+- `owner` juga mendapat halaman UI khusus untuk menambah user `staff`, `admin`, atau `owner` tanpa SQL manual.
+
+Login pertama default:
+
+- username: `owner`
+- password: `owner123`
+
+Segera ganti dengan membuat owner lain atau memperbarui password setelah deployment pertama.
 
 Contoh membuat user:
 

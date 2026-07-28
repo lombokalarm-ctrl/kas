@@ -16,3 +16,16 @@ export interface LoginResponse {
   token: string
   user: AuthUser
 }
+
+export interface ManagedUser extends AuthUser {
+  isActive: boolean
+  lastLoginAt: string | null
+  createdAt: string
+}
+
+export interface CreateUserRequest {
+  username: string
+  password: string
+  namaLengkap?: string
+  role: UserRole
+}
