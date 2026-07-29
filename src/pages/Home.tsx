@@ -95,11 +95,10 @@ export default function Home() {
             tone="keluar"
           />
           <SummaryCard
-            title="Jumlah Transaksi"
-            value={summary.jumlahTransaksi}
+            title="Total Penjualan"
+            value={summary.totalPenjualan}
             icon={BadgeDollarSign}
             tone="netral"
-            kind="number"
           />
         </section>
 

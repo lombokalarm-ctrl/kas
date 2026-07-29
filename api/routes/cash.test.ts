@@ -73,7 +73,7 @@ describe('cashRoutes', () => {
             saldo_terakhir: 1000000,
             total_masuk: 1000000,
             total_keluar: 0,
-            jumlah_transaksi: 1,
+            total_penjualan: 0,
           },
         ],
       })
@@ -83,6 +83,7 @@ describe('cashRoutes', () => {
     expect(response.status).toBe(200)
     expect(response.body.items).toHaveLength(1)
     expect(response.body.summary.saldoTerakhir).toBe(1000000)
+    expect(response.body.summary.totalPenjualan).toBe(0)
   })
 
   it('menolak transaksi dengan data tidak lengkap', async () => {

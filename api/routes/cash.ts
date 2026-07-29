@@ -22,7 +22,7 @@ function normalizeSummary(row?: Record<string, unknown>): CashSummary {
     saldoTerakhir: Number(row?.saldo_terakhir || 0),
     totalMasuk: Number(row?.total_masuk || 0),
     totalKeluar: Number(row?.total_keluar || 0),
-    jumlahTransaksi: Number(row?.jumlah_transaksi || 0),
+    totalPenjualan: Number(row?.total_penjualan || 0),
   }
 }
 
@@ -53,7 +53,7 @@ router.get('/summary', async (_req: Request, res: Response): Promise<void> => {
         COALESCE((SELECT saldo FROM kas_transaksi ORDER BY tanggal DESC, id DESC LIMIT 1), 0) AS saldo_terakhir,
         COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) AS total_masuk,
         COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) AS total_keluar,
-        COUNT(*) AS jumlah_transaksi
+        0 AS total_penjualan
       FROM kas_transaksi
     `)
 
@@ -106,7 +106,7 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
           COALESCE((SELECT saldo FROM filtered ORDER BY tanggal DESC, id DESC LIMIT 1), 0) AS saldo_terakhir,
           COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) AS total_masuk,
           COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) AS total_keluar,
-          COUNT(*) AS jumlah_transaksi
+          0 AS total_penjualan
         FROM filtered
       `,
       values,

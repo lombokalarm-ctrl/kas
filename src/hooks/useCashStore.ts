@@ -8,12 +8,22 @@ import type {
   UpdateCashTransactionRequest,
 } from '../../shared/cash'
 import { getStoredToken } from '@/lib/auth-storage'
+import { todayValue } from '@/utils/format'
 
 const defaultSummary: CashSummary = {
   saldoTerakhir: 0,
   totalMasuk: 0,
   totalKeluar: 0,
-  jumlahTransaksi: 0,
+  totalPenjualan: 0,
+}
+
+function getDefaultFilters(): CashFilters {
+  const today = todayValue()
+
+  return {
+    startDate: today,
+    endDate: today,
+  }
 }
 
 interface CashStore {
@@ -62,7 +72,7 @@ function getAuthHeaders() {
 export const useCashStore = create<CashStore>((set, get) => ({
   items: [],
   summary: defaultSummary,
-  filters: {},
+  filters: getDefaultFilters(),
   isLoading: false,
   isSubmitting: false,
   error: null,

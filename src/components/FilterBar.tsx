@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CashFilters } from '../../shared/cash'
+import { todayValue } from '@/utils/format'
 
 interface FilterBarProps {
   filters: CashFilters
@@ -8,6 +9,15 @@ interface FilterBarProps {
 
 export function FilterBar({ filters, onApply }: FilterBarProps) {
   const [localFilters, setLocalFilters] = useState<CashFilters>(filters)
+
+  function getTodayFilters(): CashFilters {
+    const today = todayValue()
+
+    return {
+      startDate: today,
+      endDate: today,
+    }
+  }
 
   useEffect(() => {
     setLocalFilters(filters)
@@ -61,7 +71,7 @@ export function FilterBar({ filters, onApply }: FilterBarProps) {
           <button
             type="button"
             onClick={() => {
-              const reset = {}
+              const reset = getTodayFilters()
               setLocalFilters(reset)
               onApply(reset)
             }}

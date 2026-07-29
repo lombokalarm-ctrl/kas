@@ -20,7 +20,7 @@ export interface CashSummary {
   saldoTerakhir: number
   totalMasuk: number
   totalKeluar: number
-  jumlahTransaksi: number
+  totalPenjualan: number
 }
 
 export interface CashListResponse {
