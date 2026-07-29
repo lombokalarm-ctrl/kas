@@ -5,9 +5,19 @@ interface FilterBarProps {
   filters: CashFilters
   onApply: (filters: CashFilters) => void
   onReset?: () => void
+  minDate?: string
+  maxDate?: string
+  helperText?: string
 }
 
-export function FilterBar({ filters, onApply, onReset }: FilterBarProps) {
+export function FilterBar({
+  filters,
+  onApply,
+  onReset,
+  minDate,
+  maxDate,
+  helperText,
+}: FilterBarProps) {
   const [localFilters, setLocalFilters] = useState<CashFilters>(filters)
 
   useEffect(() => {
@@ -39,6 +49,8 @@ export function FilterBar({ filters, onApply, onReset }: FilterBarProps) {
             onChange={(event) =>
               setLocalFilters({ ...localFilters, startDate: event.target.value })
             }
+            min={minDate}
+            max={maxDate}
             className="min-w-0 rounded-xl border border-zinc-200 bg-white px-2.5 py-2 text-xs outline-none transition focus:border-emerald-700 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm"
           />
           <span className="text-center text-xs font-semibold text-zinc-600 sm:text-sm">s/d</span>
@@ -48,9 +60,12 @@ export function FilterBar({ filters, onApply, onReset }: FilterBarProps) {
             onChange={(event) =>
               setLocalFilters({ ...localFilters, endDate: event.target.value })
             }
+            min={minDate}
+            max={maxDate}
             className="min-w-0 rounded-xl border border-zinc-200 bg-white px-2.5 py-2 text-xs outline-none transition focus:border-emerald-700 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm"
           />
         </div>
+        {helperText && <p className="text-[11px] text-zinc-500 sm:text-xs">{helperText}</p>}
         <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3 lg:flex-none">
           <button
             type="button"

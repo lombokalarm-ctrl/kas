@@ -17,6 +17,11 @@ const router = Router()
 
 router.use(requireAuth)
 
+interface DateFilters {
+  startDate?: string
+  endDate?: string
+}
+
 function normalizeSummary(row?: Record<string, unknown>): CashSummary {
   return {
     saldoTerakhir: Number(row?.saldo_terakhir || 0),
@@ -26,18 +31,18 @@ function normalizeSummary(row?: Record<string, unknown>): CashSummary {
   }
 }
 
-function buildWhereClause(startDate?: string, endDate?: string) {
+function buildWhereClause(startDate?: string, endDate?: string, parameterOffset = 0) {
   const values: string[] = []
   const clauses: string[] = []
 
   if (startDate) {
     values.push(startDate)
-    clauses.push(`tanggal >= $${values.length}`)
+    clauses.push(`tanggal >= $${values.length + parameterOffset}`)
   }
 
   if (endDate) {
     values.push(endDate)
-    clauses.push(`tanggal <= $${values.length}`)
+    clauses.push(`tanggal <= $${values.length + parameterOffset}`)
   }
 
   return {
@@ -75,33 +80,190 @@ function getRequestedFilters(req: Request, useCurrentMonthByDefault = false) {
   return getCurrentMonthFilters()
 }
 
-router.get('/summary', async (req: Request, res: Response): Promise<void> => {
-  const { startDate, endDate } = getRequestedFilters(req, true)
+function getTodayFilters() {
+  const today = formatDateValue(new Date())
+
+  return {
+    startDate: today,
+    endDate: today,
+  }
+}
+
+function isWithinRange(value: string, startDate?: string, endDate?: string) {
+  return (!startDate || value >= startDate) && (!endDate || value <= endDate)
+}
+
+function validateDateRange(filters: DateFilters) {
+  if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
+    return 'Rentang tanggal tidak valid.'
+  }
+
+  return null
+}
+
+function resolveStaffSummaryFilters(req: AuthenticatedRequest, res: Response) {
+  if (req.user?.role !== 'staff') {
+    return getRequestedFilters(req, true)
+  }
+
+  const requestedFilters = getRequestedFilters(req)
+  const rangeError = validateDateRange(requestedFilters)
+
+  if (rangeError) {
+    res.status(400).json({ message: rangeError })
+    return null
+  }
+
+  if (!requestedFilters.startDate && !requestedFilters.endDate) {
+    return getTodayFilters()
+  }
+
+  const currentMonthFilters = getCurrentMonthFilters()
+
+  if (
+    (requestedFilters.startDate &&
+      !isWithinRange(
+        requestedFilters.startDate,
+        currentMonthFilters.startDate,
+        currentMonthFilters.endDate,
+      )) ||
+    (requestedFilters.endDate &&
+      !isWithinRange(
+        requestedFilters.endDate,
+        currentMonthFilters.startDate,
+        currentMonthFilters.endDate,
+      ))
+  ) {
+    res.status(403).json({
+      message: 'Staff hanya boleh melihat ringkasan dan riwayat pada bulan berjalan.',
+    })
+    return null
+  }
+
+  return requestedFilters
+}
+
+function resolveStaffTransactionFilters(req: AuthenticatedRequest, res: Response) {
+  const requestedFilters = getRequestedFilters(req)
+  const rangeError = validateDateRange(requestedFilters)
+
+  if (rangeError) {
+    res.status(400).json({ message: rangeError })
+    return null
+  }
+
+  if (req.user?.role !== 'staff') {
+    return requestedFilters
+  }
+
+  if (!requestedFilters.startDate && !requestedFilters.endDate) {
+    return getTodayFilters()
+  }
+
+  const currentMonthFilters = getCurrentMonthFilters()
+
+  if (
+    (requestedFilters.startDate &&
+      !isWithinRange(
+        requestedFilters.startDate,
+        currentMonthFilters.startDate,
+        currentMonthFilters.endDate,
+      )) ||
+    (requestedFilters.endDate &&
+      !isWithinRange(
+        requestedFilters.endDate,
+        currentMonthFilters.startDate,
+        currentMonthFilters.endDate,
+      ))
+  ) {
+    res.status(403).json({
+      message: 'Staff hanya boleh melihat riwayat transaksi pada bulan berjalan.',
+    })
+    return null
+  }
+
+  return requestedFilters
+}
+
+function isStaffLockedToToday(req: AuthenticatedRequest, tanggal: string) {
+  if (req.user?.role !== 'staff') {
+    return false
+  }
+
+  return tanggal !== getTodayFilters().startDate
+}
+
+router.get('/summary', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const staffAwareFilters = resolveStaffSummaryFilters(req, res)
+
+  if (!staffAwareFilters) {
+    return
+  }
+
+  const { startDate, endDate } = staffAwareFilters
   const { values, whereSql } = buildWhereClause(startDate, endDate)
 
   try {
-    const result = await pool.query(
-      `
-        WITH filtered_kas AS (
-          SELECT *
-          FROM kas_transaksi
-          ${whereSql}
-        ),
-        filtered_penjualan AS (
-          SELECT *
-          FROM penjualan
-          ${whereSql}
-        )
-        SELECT
-          COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
-            - COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
-            AS saldo_terakhir,
-          COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_masuk,
-          COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_keluar,
-          COALESCE((SELECT SUM(jumlah) FROM filtered_penjualan), 0) AS total_penjualan
-      `,
-      values,
-    )
+    const result =
+      req.user?.role === 'staff'
+        ? await (() => {
+            const todayFilters = getTodayFilters()
+            const { values: todayValues, whereSql: todayWhereSql } = buildWhereClause(
+              todayFilters.startDate,
+              todayFilters.endDate,
+              values.length,
+            )
+
+            return pool.query(
+              `
+                WITH filtered_kas AS (
+                  SELECT *
+                  FROM kas_transaksi
+                  ${whereSql}
+                ),
+                today_kas AS (
+                  SELECT *
+                  FROM kas_transaksi
+                  ${todayWhereSql}
+                ),
+                today_penjualan AS (
+                  SELECT *
+                  FROM penjualan
+                  ${todayWhereSql}
+                )
+                SELECT
+                  COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+                    - COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+                    AS saldo_terakhir,
+                  COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM today_kas), 0) AS total_masuk,
+                  COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM today_kas), 0) AS total_keluar,
+                  COALESCE((SELECT SUM(jumlah) FROM today_penjualan), 0) AS total_penjualan
+              `,
+              [...values, ...todayValues],
+            )
+          })()
+        : await pool.query(
+            `
+              WITH filtered_kas AS (
+                SELECT *
+                FROM kas_transaksi
+                ${whereSql}
+              ),
+              filtered_penjualan AS (
+                SELECT *
+                FROM penjualan
+                ${whereSql}
+              )
+              SELECT
+                COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+                  - COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+                  AS saldo_terakhir,
+                COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_masuk,
+                COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_keluar,
+                COALESCE((SELECT SUM(jumlah) FROM filtered_penjualan), 0) AS total_penjualan
+            `,
+            values,
+          )
 
     res.status(200).json(normalizeSummary(result.rows[0]))
   } catch (error) {
@@ -109,8 +271,14 @@ router.get('/summary', async (req: Request, res: Response): Promise<void> => {
   }
 })
 
-router.get('/transactions', async (req: Request, res: Response): Promise<void> => {
-  const { startDate, endDate } = getRequestedFilters(req)
+router.get('/transactions', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const staffAwareFilters = resolveStaffTransactionFilters(req, res)
+
+  if (!staffAwareFilters) {
+    return
+  }
+
+  const { startDate, endDate } = staffAwareFilters
   const { values, whereSql } = buildWhereClause(startDate, endDate)
 
   try {
@@ -138,28 +306,66 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
       values,
     )
 
-    const summaryResult = await pool.query(
-      `
-        WITH filtered_kas AS (
-          SELECT *
-          FROM kas_transaksi
-          ${whereSql}
-        ),
-        filtered_penjualan AS (
-          SELECT *
-          FROM penjualan
-          ${whereSql}
-        )
-        SELECT
-          COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
-            - COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
-            AS saldo_terakhir,
-          COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_masuk,
-          COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_keluar,
-          COALESCE((SELECT SUM(jumlah) FROM filtered_penjualan), 0) AS total_penjualan
-      `,
-      values,
-    )
+    const summaryResult =
+      req.user?.role === 'staff'
+        ? await (() => {
+            const todayFilters = getTodayFilters()
+            const { values: todayValues, whereSql: todayWhereSql } = buildWhereClause(
+              todayFilters.startDate,
+              todayFilters.endDate,
+              values.length,
+            )
+
+            return pool.query(
+              `
+                WITH filtered_kas AS (
+                  SELECT *
+                  FROM kas_transaksi
+                  ${whereSql}
+                ),
+                today_kas AS (
+                  SELECT *
+                  FROM kas_transaksi
+                  ${todayWhereSql}
+                ),
+                today_penjualan AS (
+                  SELECT *
+                  FROM penjualan
+                  ${todayWhereSql}
+                )
+                SELECT
+                  COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+                    - COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+                    AS saldo_terakhir,
+                  COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM today_kas), 0) AS total_masuk,
+                  COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM today_kas), 0) AS total_keluar,
+                  COALESCE((SELECT SUM(jumlah) FROM today_penjualan), 0) AS total_penjualan
+              `,
+              [...values, ...todayValues],
+            )
+          })()
+        : await pool.query(
+            `
+              WITH filtered_kas AS (
+                SELECT *
+                FROM kas_transaksi
+                ${whereSql}
+              ),
+              filtered_penjualan AS (
+                SELECT *
+                FROM penjualan
+                ${whereSql}
+              )
+              SELECT
+                COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+                  - COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+                  AS saldo_terakhir,
+                COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_masuk,
+                COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_keluar,
+                COALESCE((SELECT SUM(jumlah) FROM filtered_penjualan), 0) AS total_penjualan
+            `,
+            values,
+          )
 
     const response: CashListResponse = {
       items: itemsResult.rows,
@@ -172,7 +378,7 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
   }
 })
 
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const body = req.body as CreateCashTransactionRequest
 
   if (!body?.tanggal || !body?.keterangan || !body?.jenis || !body?.jumlah) {
@@ -187,6 +393,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
   if (Number(body.jumlah) <= 0) {
     res.status(400).json({ message: 'Jumlah harus lebih besar dari nol.' })
+    return
+  }
+
+  if (isStaffLockedToToday(req, body.tanggal)) {
+    res.status(403).json({ message: 'Staff hanya boleh menyimpan transaksi dengan tanggal hari ini.' })
     return
   }
 

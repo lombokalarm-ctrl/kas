@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express'
 import pool from '../db.js'
-import { requireAuth } from '../lib/auth.js'
+import { requireAuth, type AuthenticatedRequest } from '../lib/auth.js'
 import type {
   CreateSaleRequest,
   SalesListResponse,
@@ -11,6 +11,11 @@ import type {
 const router = Router()
 
 router.use(requireAuth)
+
+interface DateFilters {
+  startDate?: string
+  endDate?: string
+}
 
 function normalizeSummary(row?: Record<string, unknown>): SalesSummary {
   return {
@@ -67,7 +72,37 @@ function getRequestedFilters(req: Request, useCurrentMonthByDefault = false) {
   return getCurrentMonthFilters()
 }
 
-router.get('/summary', async (req: Request, res: Response): Promise<void> => {
+function getTodayFilters() {
+  const today = formatDateValue(new Date())
+
+  return {
+    startDate: today,
+    endDate: today,
+  }
+}
+
+function validateDateRange(filters: DateFilters) {
+  if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
+    return 'Rentang tanggal tidak valid.'
+  }
+
+  return null
+}
+
+function isStaffLockedToToday(req: AuthenticatedRequest, tanggal: string) {
+  if (req.user?.role !== 'staff') {
+    return false
+  }
+
+  return tanggal !== getTodayFilters().startDate
+}
+
+router.get('/summary', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  if (req.user?.role === 'staff') {
+    res.status(403).json({ message: 'Staff tidak diizinkan melihat ringkasan penjualan.' })
+    return
+  }
+
   const { startDate, endDate } = getRequestedFilters(req, true)
   const { values, whereSql } = buildWhereClause(startDate, endDate)
 
@@ -88,8 +123,21 @@ router.get('/summary', async (req: Request, res: Response): Promise<void> => {
   }
 })
 
-router.get('/transactions', async (req: Request, res: Response): Promise<void> => {
-  const { startDate, endDate } = getRequestedFilters(req)
+router.get('/transactions', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  if (req.user?.role === 'staff') {
+    res.status(403).json({ message: 'Staff tidak diizinkan melihat riwayat penjualan.' })
+    return
+  }
+
+  const requestedFilters = getRequestedFilters(req)
+  const rangeError = validateDateRange(requestedFilters)
+
+  if (rangeError) {
+    res.status(400).json({ message: rangeError })
+    return
+  }
+
+  const { startDate, endDate } = requestedFilters
   const { values, whereSql } = buildWhereClause(startDate, endDate)
 
   try {
@@ -131,7 +179,7 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
   }
 })
 
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const body = req.body as CreateSaleRequest
 
   if (!body?.tanggal || !body?.keterangan || !body?.jumlah) {
@@ -141,6 +189,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
   if (Number(body.jumlah) <= 0) {
     res.status(400).json({ message: 'Jumlah penjualan harus lebih besar dari nol.' })
+    return
+  }
+
+  if (isStaffLockedToToday(req, body.tanggal)) {
+    res.status(403).json({ message: 'Staff hanya boleh menyimpan penjualan dengan tanggal hari ini.' })
     return
   }
 

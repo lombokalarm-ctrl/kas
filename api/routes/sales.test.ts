@@ -7,6 +7,15 @@ const { queryMock } = vi.hoisted(() => ({
   queryMock: vi.fn(),
 }))
 
+const authUserMock = vi.hoisted(() => ({
+  current: {
+    id: 1,
+    username: 'owner',
+    namaLengkap: 'Pemilik',
+    role: 'owner',
+  },
+}))
+
 vi.mock('../db.js', () => ({
   default: {
     query: queryMock,
@@ -14,12 +23,29 @@ vi.mock('../db.js', () => ({
 }))
 
 vi.mock('../lib/auth.js', () => ({
-  requireAuth: (_req: Request, _res: Response, next: NextFunction) => {
+  requireAuth: (req: Request, _res: Response, next: NextFunction) => {
+    Object.assign(req, {
+      user: authUserMock.current,
+    })
     next()
   },
 }))
 
 import salesRoutes from './sales'
+
+function toDateValue(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return localDate.toISOString().slice(0, 10)
+}
+
+function getTodayValue() {
+  return toDateValue(new Date())
+}
+
+function getPreviousMonthValue() {
+  const now = new Date()
+  return toDateValue(new Date(now.getFullYear(), now.getMonth() - 1, 15))
+}
 
 describe('salesRoutes', () => {
   const app = express()
@@ -28,6 +54,12 @@ describe('salesRoutes', () => {
 
   beforeEach(() => {
     queryMock.mockReset()
+    authUserMock.current = {
+      id: 1,
+      username: 'owner',
+      namaLengkap: 'Pemilik',
+      role: 'owner',
+    }
   })
 
   it('mengembalikan daftar penjualan dan ringkasan', async () => {
@@ -68,5 +100,56 @@ describe('salesRoutes', () => {
 
     expect(response.status).toBe(400)
     expect(response.body.message).toMatch(/belum lengkap/i)
+  })
+
+  it('menolak staff melihat ringkasan penjualan', async () => {
+    authUserMock.current = {
+      id: 2,
+      username: 'staff',
+      namaLengkap: 'Staff',
+      role: 'staff',
+    }
+
+    const response = await request(app).get('/api/sales/summary')
+
+    expect(response.status).toBe(403)
+    expect(response.body.message).toMatch(/ringkasan penjualan/i)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('menolak staff melihat riwayat penjualan', async () => {
+    authUserMock.current = {
+      id: 2,
+      username: 'staff',
+      namaLengkap: 'Staff',
+      role: 'staff',
+    }
+
+    const response = await request(app)
+      .get('/api/sales/transactions')
+      .query({ startDate: getTodayValue(), endDate: getTodayValue() })
+
+    expect(response.status).toBe(403)
+    expect(response.body.message).toMatch(/riwayat penjualan/i)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('menolak staff menyimpan penjualan dengan tanggal selain hari ini', async () => {
+    authUserMock.current = {
+      id: 2,
+      username: 'staff',
+      namaLengkap: 'Staff',
+      role: 'staff',
+    }
+
+    const response = await request(app).post('/api/sales').send({
+      tanggal: getPreviousMonthValue(),
+      keterangan: 'Penjualan lama',
+      jumlah: 12000,
+    })
+
+    expect(response.status).toBe(403)
+    expect(response.body.message).toMatch(/hari ini/i)
+    expect(queryMock).not.toHaveBeenCalled()
   })
 })

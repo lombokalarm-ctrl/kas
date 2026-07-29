@@ -1,13 +1,15 @@
-import { type FormEvent, useLayoutEffect, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CashType, CreateCashTransactionRequest } from '../../shared/cash'
 import type { CreateSaleRequest } from '../../shared/sales'
 import { formatThousandNumber, todayValue } from '@/utils/format'
 import { cn } from '@/lib/utils'
+import type { UserRole } from '../../shared/auth'
 
 type EntryType = CashType | 'penjualan'
 
 interface TransactionFormProps {
   isSubmitting: boolean
+  userRole: UserRole
   onSubmit: (
     type: EntryType,
     payload: CreateCashTransactionRequest | CreateSaleRequest,
@@ -23,11 +25,13 @@ const defaultForm = {
 
 export function TransactionForm({
   isSubmitting,
+  userRole,
   onSubmit,
 }: TransactionFormProps) {
   const [form, setForm] = useState(defaultForm)
   const jumlahInputRef = useRef<HTMLInputElement>(null)
   const desiredCaretRef = useRef<number | null>(null)
+  const isStaff = userRole === 'staff'
 
   function getFormattedJumlah(rawValue: string) {
     return rawValue ? formatThousandNumber(Number(rawValue)) : ''
@@ -66,6 +70,18 @@ export function TransactionForm({
     input.setSelectionRange(caretPosition, caretPosition)
     desiredCaretRef.current = null
   }, [form.jumlah])
+
+  useEffect(() => {
+    if (!isStaff) {
+      return
+    }
+
+    const today = todayValue()
+
+    setForm((currentForm) =>
+      currentForm.tanggal === today ? currentForm : { ...currentForm, tanggal: today },
+    )
+  }, [isStaff])
 
   function handleJumlahChange(value: string, caretPosition: number) {
     const digitsOnly = value.replace(/\D/g, '')
@@ -119,7 +135,9 @@ export function TransactionForm({
             onChange={(event) => setForm({ ...form, tanggal: event.target.value })}
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition focus:border-emerald-700 focus:bg-white sm:rounded-2xl sm:px-4 sm:py-3"
             required
+            disabled={isStaff}
           />
+          {isStaff && <p className="text-[11px] text-zinc-500">Tanggal staff selalu mengikuti hari ini.</p>}
         </label>
 
         <div className="space-y-1.5 text-xs text-zinc-700 sm:space-y-2 sm:text-sm">

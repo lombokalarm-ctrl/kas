@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownCircle, ArrowUpCircle, BadgeDollarSign, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { CreateCashTransactionRequest } from '../../shared/cash'
@@ -49,17 +49,55 @@ export default function Home() {
   } = useSalesStore()
   const { user, logout } = useAuthStore()
   const [historyTab, setHistoryTab] = useState<'transaksi' | 'penjualan'>('transaksi')
+  const isStaff = user?.role === 'staff'
+  const canAccessSales = user?.role !== 'staff'
+  const todayFilters = useMemo(() => getTodayFilters(), [])
+  const currentMonthFilters = useMemo(() => getCurrentMonthFilters(), [])
 
   const isSubmitting = isCashSubmitting || isSalesSubmitting
-  const feedbackError = cashError || salesError
-  const successMessage = salesSuccessMessage || cashSuccessMessage
+  const feedbackError = cashError || (canAccessSales ? salesError : null)
+  const successMessage = (canAccessSales ? salesSuccessMessage : null) || cashSuccessMessage
 
   useEffect(() => {
+    if (!user) {
+      return
+    }
+
+    if (isStaff) {
+      setFilters(todayFilters)
+      setSummaryFilters(todayFilters)
+      setSalesFilters(todayFilters)
+      setSalesSummaryFilters(todayFilters)
+      setHistoryTab('transaksi')
+    }
+  }, [isStaff, setFilters, setSalesFilters, setSalesSummaryFilters, setSummaryFilters, todayFilters, user])
+
+  useEffect(() => {
+    if (!user) {
+      return
+    }
+
     void fetchTransactions(cashFilters)
     void fetchSummary(cashSummaryFilters)
-    void fetchSales(salesFilters)
-    void fetchSalesSummary(salesSummaryFilters)
-  }, [cashFilters, cashSummaryFilters, fetchSales, fetchSalesSummary, fetchSummary, fetchTransactions, salesFilters, salesSummaryFilters])
+
+    if (canAccessSales) {
+      void fetchSales(salesFilters)
+      void fetchSalesSummary(salesSummaryFilters)
+    }
+  }, [
+    canAccessSales,
+    cashFilters,
+    cashSummaryFilters,
+    fetchSales,
+    fetchSalesSummary,
+    fetchSummary,
+    fetchTransactions,
+    isStaff,
+    salesFilters,
+    salesSummaryFilters,
+    todayFilters,
+    user,
+  ])
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(20,83,45,0.12),_transparent_35%),linear-gradient(180deg,#f6f0e6_0%,#fbfaf7_45%,#f1ece3_100%)] px-3 py-4 text-zinc-950 sm:px-4 sm:py-6 md:px-8">
@@ -100,6 +138,7 @@ export default function Home() {
         <section className="mb-4 sm:mb-6">
           <TransactionForm
             isSubmitting={isSubmitting}
+            userRole={user?.role ?? 'staff'}
             onSubmit={async (type, payload) => {
               if (type === 'penjualan') {
                 return createSale(payload as CreateSaleRequest)
@@ -110,7 +149,11 @@ export default function Home() {
           />
         </section>
 
-        <section className="mb-4 grid grid-cols-2 gap-3 sm:mb-6 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section
+          className={`mb-4 grid grid-cols-2 gap-3 sm:mb-6 sm:gap-4 ${
+            isStaff ? 'md:grid-cols-2 xl:grid-cols-4' : 'md:grid-cols-2 xl:grid-cols-4'
+          }`}
+        >
           <SummaryCard
             title="Saldo Terakhir"
             value={summary.saldoTerakhir}
@@ -131,7 +174,7 @@ export default function Home() {
           />
           <SummaryCard
             title="Total Penjualan"
-            value={salesSummary.totalPenjualan}
+            value={isStaff ? summary.totalPenjualan : salesSummary.totalPenjualan}
             icon={BadgeDollarSign}
             tone="netral"
           />
@@ -169,50 +212,65 @@ export default function Home() {
             onApply={(nextFilters) => {
               setFilters(nextFilters)
               setSummaryFilters(nextFilters)
-              setSalesFilters(nextFilters)
-              setSalesSummaryFilters(nextFilters)
+
+              if (canAccessSales) {
+                setSalesFilters(nextFilters)
+                setSalesSummaryFilters(nextFilters)
+              }
             }}
             onReset={() => {
               const nextHistoryFilters = getTodayFilters()
-              const nextSummaryFilters = getCurrentMonthFilters()
+              const nextSummaryFilters = isStaff ? nextHistoryFilters : getCurrentMonthFilters()
 
               setFilters(nextHistoryFilters)
               setSummaryFilters(nextSummaryFilters)
-              setSalesFilters(nextHistoryFilters)
-              setSalesSummaryFilters(nextSummaryFilters)
+
+              if (canAccessSales) {
+                setSalesFilters(nextHistoryFilters)
+                setSalesSummaryFilters(nextSummaryFilters)
+              }
             }}
+            minDate={isStaff ? currentMonthFilters.startDate : undefined}
+            maxDate={isStaff ? currentMonthFilters.endDate : undefined}
+            helperText={
+              isStaff
+                ? 'Staff hanya bisa melihat riwayat pada bulan berjalan. Saldo mengikuti filter aktif, sedangkan total masuk, keluar, dan penjualan selalu hari ini.'
+                : undefined
+            }
           />
         </section>
 
-        <section className="mb-4 sm:mb-6">
-          <div className="grid grid-cols-2 rounded-xl bg-zinc-100 p-1 sm:w-fit sm:rounded-2xl">
-            <button
-              type="button"
-              onClick={() => setHistoryTab('transaksi')}
-              className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition sm:rounded-[18px] sm:px-4 ${
-                historyTab === 'transaksi'
-                  ? 'bg-zinc-950 text-white shadow-sm'
-                  : 'text-zinc-600 hover:text-zinc-950'
-              }`}
-            >
-              Riwayat Transaksi
-            </button>
-            <button
-              type="button"
-              onClick={() => setHistoryTab('penjualan')}
-              className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition sm:rounded-[18px] sm:px-4 ${
-                historyTab === 'penjualan'
-                  ? 'bg-zinc-950 text-white shadow-sm'
-                  : 'text-zinc-600 hover:text-zinc-950'
-              }`}
-            >
-              Riwayat Penjualan
-            </button>
-          </div>
-        </section>
+        {canAccessSales && (
+          <section className="mb-4 sm:mb-6">
+            <div className="grid grid-cols-2 rounded-xl bg-zinc-100 p-1 sm:w-fit sm:rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setHistoryTab('transaksi')}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition sm:rounded-[18px] sm:px-4 ${
+                  historyTab === 'transaksi'
+                    ? 'bg-zinc-950 text-white shadow-sm'
+                    : 'text-zinc-600 hover:text-zinc-950'
+                }`}
+              >
+                Riwayat Transaksi
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryTab('penjualan')}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition sm:rounded-[18px] sm:px-4 ${
+                  historyTab === 'penjualan'
+                    ? 'bg-zinc-950 text-white shadow-sm'
+                    : 'text-zinc-600 hover:text-zinc-950'
+                }`}
+              >
+                Riwayat Penjualan
+              </button>
+            </div>
+          </section>
+        )}
 
         {user &&
-          (historyTab === 'transaksi' ? (
+          (!canAccessSales || historyTab === 'transaksi' ? (
             <TransactionTable
               items={cashItems}
               isLoading={isCashLoading}
