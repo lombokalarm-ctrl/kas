@@ -1,33 +1,55 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowDownCircle, ArrowUpCircle, BadgeDollarSign, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import type { CreateCashTransactionRequest } from '../../shared/cash'
+import type { CreateSaleRequest } from '../../shared/sales'
 import { FilterBar } from '@/components/FilterBar'
+import { SalesTable } from '@/components/SalesTable'
 import { SummaryCard } from '@/components/SummaryCard'
 import { TransactionForm } from '@/components/TransactionForm'
 import { TransactionTable } from '@/components/TransactionTable'
 import { useAuthStore } from '@/hooks/useAuthStore'
 import { useCashStore } from '@/hooks/useCashStore'
+import { useSalesStore } from '@/hooks/useSalesStore'
 
 export default function Home() {
   const {
-    items,
+    items: cashItems,
     summary,
-    filters,
-    isLoading,
-    isSubmitting,
-    error,
-    successMessage,
+    filters: cashFilters,
+    isLoading: isCashLoading,
+    isSubmitting: isCashSubmitting,
+    error: cashError,
+    successMessage: cashSuccessMessage,
     fetchTransactions,
     setFilters,
     createTransaction,
     updateTransaction,
     clearFeedback,
   } = useCashStore()
+  const {
+    items: salesItems,
+    summary: salesSummary,
+    isLoading: isSalesLoading,
+    isSubmitting: isSalesSubmitting,
+    error: salesError,
+    successMessage: salesSuccessMessage,
+    fetchSales,
+    setFilters: setSalesFilters,
+    createSale,
+    clearFeedback: clearSalesFeedback,
+  } = useSalesStore()
   const { user, logout } = useAuthStore()
+  const [historyTab, setHistoryTab] = useState<'transaksi' | 'penjualan'>('transaksi')
+
+  const isSubmitting = isCashSubmitting || isSalesSubmitting
+  const feedbackError = cashError || salesError
+  const successMessage = salesSuccessMessage || cashSuccessMessage
 
   useEffect(() => {
-    fetchTransactions()
-  }, [fetchTransactions])
+    void fetchTransactions(cashFilters)
+    void fetchSales(cashFilters)
+  }, [fetchSales, fetchTransactions])
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(20,83,45,0.12),_transparent_35%),linear-gradient(180deg,#f6f0e6_0%,#fbfaf7_45%,#f1ece3_100%)] px-3 py-4 text-zinc-950 sm:px-4 sm:py-6 md:px-8">
@@ -68,9 +90,18 @@ export default function Home() {
         <section className="mb-4 sm:mb-6">
           <TransactionForm
             isSubmitting={isSubmitting}
-            onSubmit={async (payload) => {
-              const ok = await createTransaction(payload)
-              return ok
+            onSubmit={async (type, payload) => {
+              if (type === 'penjualan') {
+                const ok = await createSale(payload as CreateSaleRequest)
+
+                if (ok) {
+                  await fetchTransactions(cashFilters)
+                }
+
+                return ok
+              }
+
+              return createTransaction(payload as CreateCashTransactionRequest)
             }}
           />
         </section>
@@ -96,26 +127,29 @@ export default function Home() {
           />
           <SummaryCard
             title="Total Penjualan"
-            value={summary.totalPenjualan}
+            value={salesSummary.totalPenjualan}
             icon={BadgeDollarSign}
             tone="netral"
           />
         </section>
 
-        {(error || successMessage) && (
+        {(feedbackError || successMessage) && (
           <section className="mb-4 sm:mb-6">
             <div
               className={`rounded-xl border px-4 py-3 text-xs shadow-sm sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm ${
-                error
+                feedbackError
                   ? 'border-rose-200 bg-rose-50 text-rose-900'
                   : 'border-emerald-200 bg-emerald-50 text-emerald-900'
               }`}
             >
               <div className="flex items-center justify-between gap-4">
-                <span>{error || successMessage}</span>
+                <span>{feedbackError || successMessage}</span>
                 <button
                   type="button"
-                  onClick={clearFeedback}
+                  onClick={() => {
+                    clearFeedback()
+                    clearSalesFeedback()
+                  }}
                   className="text-[10px] font-semibold uppercase tracking-[0.18em] sm:text-xs sm:tracking-[0.22em]"
                 >
                   Tutup
@@ -127,26 +161,58 @@ export default function Home() {
 
         <section className="mb-4 sm:mb-6">
           <FilterBar
-            filters={filters}
+            filters={cashFilters}
             onApply={(nextFilters) => {
               setFilters(nextFilters)
-              fetchTransactions(nextFilters)
+              setSalesFilters(nextFilters)
+              void fetchTransactions(nextFilters)
+              void fetchSales(nextFilters)
             }}
           />
         </section>
 
-        {user && (
-          <TransactionTable
-            items={items}
-            isLoading={isLoading}
-            userRole={user.role}
-            isSubmitting={isSubmitting}
-            onUpdateTransaction={async (id, payload) => {
-              const result = await updateTransaction(id, payload)
-              return result.ok
-            }}
-          />
-        )}
+        <section className="mb-4 sm:mb-6">
+          <div className="grid grid-cols-2 rounded-xl bg-zinc-100 p-1 sm:w-fit sm:rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setHistoryTab('transaksi')}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition sm:rounded-[18px] sm:px-4 ${
+                historyTab === 'transaksi'
+                  ? 'bg-zinc-950 text-white shadow-sm'
+                  : 'text-zinc-600 hover:text-zinc-950'
+              }`}
+            >
+              Riwayat Transaksi
+            </button>
+            <button
+              type="button"
+              onClick={() => setHistoryTab('penjualan')}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition sm:rounded-[18px] sm:px-4 ${
+                historyTab === 'penjualan'
+                  ? 'bg-zinc-950 text-white shadow-sm'
+                  : 'text-zinc-600 hover:text-zinc-950'
+              }`}
+            >
+              Riwayat Penjualan
+            </button>
+          </div>
+        </section>
+
+        {user &&
+          (historyTab === 'transaksi' ? (
+            <TransactionTable
+              items={cashItems}
+              isLoading={isCashLoading}
+              userRole={user.role}
+              isSubmitting={isCashSubmitting}
+              onUpdateTransaction={async (id, payload) => {
+                const result = await updateTransaction(id, payload)
+                return result.ok
+              }}
+            />
+          ) : (
+            <SalesTable items={salesItems} isLoading={isSalesLoading} />
+          ))}
       </div>
     </main>
   )

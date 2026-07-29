@@ -9,6 +9,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import authRoutes from './routes/auth.js'
 import cashRoutes from './routes/cash.js'
+import salesRoutes from './routes/sales.js'
 
 dotenv.config()
 
@@ -22,6 +23,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 app.use('/api/auth', authRoutes)
 app.use('/api/cash', cashRoutes)
+app.use('/api/sales', salesRoutes)
 
 app.use(
   '/api/health',

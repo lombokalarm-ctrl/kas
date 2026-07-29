@@ -1,17 +1,23 @@
 import { type FormEvent, useLayoutEffect, useRef, useState } from 'react'
 import type { CashType, CreateCashTransactionRequest } from '../../shared/cash'
+import type { CreateSaleRequest } from '../../shared/sales'
 import { formatThousandNumber, todayValue } from '@/utils/format'
 import { cn } from '@/lib/utils'
 
+type EntryType = CashType | 'penjualan'
+
 interface TransactionFormProps {
   isSubmitting: boolean
-  onSubmit: (payload: CreateCashTransactionRequest) => Promise<boolean>
+  onSubmit: (
+    type: EntryType,
+    payload: CreateCashTransactionRequest | CreateSaleRequest,
+  ) => Promise<boolean>
 }
 
 const defaultForm = {
   tanggal: todayValue(),
   keterangan: '',
-  jenis: 'masuk' as CashType,
+  jenis: 'masuk' as EntryType,
   jumlah: '',
 }
 
@@ -26,6 +32,8 @@ export function TransactionForm({
   function getFormattedJumlah(rawValue: string) {
     return rawValue ? formatThousandNumber(Number(rawValue)) : ''
   }
+
+  const isPenjualan = form.jenis === 'penjualan'
 
   function getCaretPosition(formattedValue: string, digitsBeforeCaret: number) {
     if (digitsBeforeCaret <= 0) {
@@ -72,12 +80,21 @@ export function TransactionForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const success = await onSubmit({
-      tanggal: form.tanggal,
-      keterangan: form.keterangan,
-      jenis: form.jenis,
-      jumlah: Number(form.jumlah),
-    })
+    const payload =
+      form.jenis === 'penjualan'
+        ? {
+            tanggal: form.tanggal,
+            keterangan: form.keterangan,
+            jumlah: Number(form.jumlah),
+          }
+        : {
+            tanggal: form.tanggal,
+            keterangan: form.keterangan,
+            jenis: form.jenis,
+            jumlah: Number(form.jumlah),
+          }
+
+    const success = await onSubmit(form.jenis, payload)
 
     if (success) {
       setForm({
@@ -107,8 +124,8 @@ export function TransactionForm({
 
         <div className="space-y-1.5 text-xs text-zinc-700 sm:space-y-2 sm:text-sm">
           <span>Jenis transaksi</span>
-          <div className="grid grid-cols-2 rounded-xl bg-zinc-100 p-1 sm:rounded-2xl">
-            {(['masuk', 'keluar'] as CashType[]).map((jenis) => (
+          <div className="grid grid-cols-3 rounded-xl bg-zinc-100 p-1 sm:rounded-2xl">
+            {(['masuk', 'keluar', 'penjualan'] as EntryType[]).map((jenis) => (
               <button
                 key={jenis}
                 type="button"
@@ -120,7 +137,7 @@ export function TransactionForm({
                     : 'text-zinc-600 hover:text-zinc-950',
                 )}
               >
-                {jenis}
+                {jenis === 'penjualan' ? 'penjualan' : jenis}
               </button>
             ))}
           </div>
@@ -132,7 +149,11 @@ export function TransactionForm({
             type="text"
             value={form.keterangan}
             onChange={(event) => setForm({ ...form, keterangan: event.target.value })}
-            placeholder="Contoh: Setoran modal, beli ATK, penjualan tunai"
+            placeholder={
+              isPenjualan
+                ? 'Contoh: Penjualan tunai, transfer pelanggan'
+                : 'Contoh: Setoran modal, beli ATK, pembayaran operasional'
+            }
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition focus:border-emerald-700 focus:bg-white sm:rounded-2xl sm:px-4 sm:py-3"
             required
           />
@@ -144,10 +165,10 @@ export function TransactionForm({
             <span
               className={cn(
                 'pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg font-bold sm:left-4 sm:text-xl',
-                form.jenis === 'masuk' ? 'text-emerald-700' : 'text-rose-700',
+                form.jenis === 'keluar' ? 'text-rose-700' : 'text-emerald-700',
               )}
             >
-              {form.jenis === 'masuk' ? '+' : '-'}
+              {form.jenis === 'keluar' ? '-' : '+'}
             </span>
             <input
               type="text"
@@ -164,7 +185,7 @@ export function TransactionForm({
               placeholder="0"
               className={cn(
                 'w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2 pl-8 pr-3 text-lg font-semibold outline-none transition focus:border-emerald-700 focus:bg-white sm:rounded-2xl sm:py-3 sm:pl-10 sm:pr-4 sm:text-xl',
-                form.jenis === 'masuk' ? 'text-emerald-700' : 'text-rose-700',
+                form.jenis === 'keluar' ? 'text-rose-700' : 'text-emerald-700',
               )}
               required
             />
@@ -177,7 +198,7 @@ export function TransactionForm({
         disabled={isSubmitting}
         className="mt-4 w-full rounded-xl bg-emerald-950 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-amber-50 transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-6 sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm sm:tracking-[0.28em]"
       >
-        {isSubmitting ? 'Menyimpan...' : 'Simpan transaksi'}
+        {isSubmitting ? 'Menyimpan...' : isPenjualan ? 'Simpan penjualan' : 'Simpan transaksi'}
       </button>
     </form>
   )

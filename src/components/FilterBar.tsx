@@ -28,7 +28,7 @@ export function FilterBar({ filters, onApply }: FilterBarProps) {
       <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600 sm:text-[11px] sm:tracking-[0.24em]">
-            Filter Mutasi
+            Filter Riwayat
           </p>
           <h3 className="mt-1 font-display text-lg text-zinc-950 sm:mt-2 sm:text-2xl">
             Pilih rentang tanggal

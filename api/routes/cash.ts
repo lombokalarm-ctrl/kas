@@ -53,7 +53,7 @@ router.get('/summary', async (_req: Request, res: Response): Promise<void> => {
         COALESCE((SELECT saldo FROM kas_transaksi ORDER BY tanggal DESC, id DESC LIMIT 1), 0) AS saldo_terakhir,
         COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) AS total_masuk,
         COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) AS total_keluar,
-        0 AS total_penjualan
+        COALESCE((SELECT SUM(jumlah) FROM penjualan), 0) AS total_penjualan
       FROM kas_transaksi
     `)
 
@@ -97,17 +97,21 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
 
     const summaryResult = await pool.query(
       `
-        WITH filtered AS (
+        WITH filtered_kas AS (
           SELECT *
           FROM kas_transaksi
           ${whereSql}
+        ),
+        filtered_penjualan AS (
+          SELECT *
+          FROM penjualan
+          ${whereSql}
         )
         SELECT
-          COALESCE((SELECT saldo FROM filtered ORDER BY tanggal DESC, id DESC LIMIT 1), 0) AS saldo_terakhir,
-          COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) AS total_masuk,
-          COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) AS total_keluar,
-          0 AS total_penjualan
-        FROM filtered
+          COALESCE((SELECT saldo FROM filtered_kas ORDER BY tanggal DESC, id DESC LIMIT 1), 0) AS saldo_terakhir,
+          COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_masuk,
+          COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_keluar,
+          COALESCE((SELECT SUM(jumlah) FROM filtered_penjualan), 0) AS total_penjualan
       `,
       values,
     )
