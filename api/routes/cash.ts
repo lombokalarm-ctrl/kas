@@ -46,16 +46,62 @@ function buildWhereClause(startDate?: string, endDate?: string) {
   }
 }
 
-router.get('/summary', async (_req: Request, res: Response): Promise<void> => {
+function formatDateValue(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return localDate.toISOString().slice(0, 10)
+}
+
+function getCurrentMonthFilters() {
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+  return {
+    startDate: formatDateValue(monthStart),
+    endDate: formatDateValue(monthEnd),
+  }
+}
+
+function getRequestedFilters(req: Request, useCurrentMonthByDefault = false) {
+  const requestFilters = {
+    startDate: typeof req.query.startDate === 'string' ? req.query.startDate : undefined,
+    endDate: typeof req.query.endDate === 'string' ? req.query.endDate : undefined,
+  }
+
+  if (requestFilters.startDate || requestFilters.endDate || !useCurrentMonthByDefault) {
+    return requestFilters
+  }
+
+  return getCurrentMonthFilters()
+}
+
+router.get('/summary', async (req: Request, res: Response): Promise<void> => {
+  const { startDate, endDate } = getRequestedFilters(req, true)
+  const { values, whereSql } = buildWhereClause(startDate, endDate)
+
   try {
-    const result = await pool.query(`
-      SELECT
-        COALESCE((SELECT saldo FROM kas_transaksi ORDER BY tanggal DESC, id DESC LIMIT 1), 0) AS saldo_terakhir,
-        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) AS total_masuk,
-        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) AS total_keluar,
-        COALESCE((SELECT SUM(jumlah) FROM penjualan), 0) AS total_penjualan
-      FROM kas_transaksi
-    `)
+    const result = await pool.query(
+      `
+        WITH filtered_kas AS (
+          SELECT *
+          FROM kas_transaksi
+          ${whereSql}
+        ),
+        filtered_penjualan AS (
+          SELECT *
+          FROM penjualan
+          ${whereSql}
+        )
+        SELECT
+          COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+            - COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+            AS saldo_terakhir,
+          COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_masuk,
+          COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_keluar,
+          COALESCE((SELECT SUM(jumlah) FROM filtered_penjualan), 0) AS total_penjualan
+      `,
+      values,
+    )
 
     res.status(200).json(normalizeSummary(result.rows[0]))
   } catch (error) {
@@ -64,10 +110,7 @@ router.get('/summary', async (_req: Request, res: Response): Promise<void> => {
 })
 
 router.get('/transactions', async (req: Request, res: Response): Promise<void> => {
-  const startDate =
-    typeof req.query.startDate === 'string' ? req.query.startDate : undefined
-  const endDate =
-    typeof req.query.endDate === 'string' ? req.query.endDate : undefined
+  const { startDate, endDate } = getRequestedFilters(req)
   const { values, whereSql } = buildWhereClause(startDate, endDate)
 
   try {
@@ -108,7 +151,9 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
           ${whereSql}
         )
         SELECT
-          COALESCE((SELECT saldo FROM filtered_kas ORDER BY tanggal DESC, id DESC LIMIT 1), 0) AS saldo_terakhir,
+          COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+            - COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
+            AS saldo_terakhir,
           COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_masuk,
           COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_keluar,
           COALESCE((SELECT SUM(jumlah) FROM filtered_penjualan), 0) AS total_penjualan

@@ -1,14 +1,13 @@
 import { create } from 'zustand'
 import type {
   CashFilters,
-  CashListResponse,
   CashSummary,
   CashTransaction,
   CreateCashTransactionRequest,
   UpdateCashTransactionRequest,
 } from '../../shared/cash'
 import { getStoredToken } from '@/lib/auth-storage'
-import { todayValue } from '@/utils/format'
+import { getCurrentMonthFilters, getTodayFilters } from '@/utils/format'
 
 const defaultSummary: CashSummary = {
   saldoTerakhir: 0,
@@ -17,26 +16,20 @@ const defaultSummary: CashSummary = {
   totalPenjualan: 0,
 }
 
-function getDefaultFilters(): CashFilters {
-  const today = todayValue()
-
-  return {
-    startDate: today,
-    endDate: today,
-  }
-}
-
 interface CashStore {
   items: CashTransaction[]
   summary: CashSummary
   filters: CashFilters
+  summaryFilters: CashFilters
   isLoading: boolean
   isSubmitting: boolean
   error: string | null
   successMessage: string | null
   setFilters: (filters: CashFilters) => void
+  setSummaryFilters: (filters: CashFilters) => void
   clearFeedback: () => void
   fetchTransactions: (filters?: CashFilters) => Promise<void>
+  fetchSummary: (filters?: CashFilters) => Promise<void>
   createTransaction: (payload: CreateCashTransactionRequest) => Promise<boolean>
   updateTransaction: (
     id: number,
@@ -72,13 +65,17 @@ function getAuthHeaders() {
 export const useCashStore = create<CashStore>((set, get) => ({
   items: [],
   summary: defaultSummary,
-  filters: getDefaultFilters(),
+  filters: getTodayFilters(),
+  summaryFilters: getCurrentMonthFilters(),
   isLoading: false,
   isSubmitting: false,
   error: null,
   successMessage: null,
   setFilters: (filters) => {
     set({ filters })
+  },
+  setSummaryFilters: (filters) => {
+    set({ summaryFilters: filters })
   },
   clearFeedback: () => {
     set({ error: null, successMessage: null })
@@ -103,16 +100,45 @@ export const useCashStore = create<CashStore>((set, get) => ({
         throw new Error('Gagal memuat data kas.')
       }
 
-      const data: CashListResponse = await response.json()
+      const data = (await response.json()) as { items: CashTransaction[] }
 
       set({
         items: data.items,
-        summary: data.summary,
         isLoading: false,
       })
     } catch (error) {
       set({
         isLoading: false,
+        error: error instanceof Error ? error.message : 'Terjadi kesalahan.',
+      })
+    }
+  },
+  fetchSummary: async (nextFilters) => {
+    const summaryFilters = nextFilters ?? get().summaryFilters
+
+    set({
+      error: null,
+      summaryFilters,
+    })
+
+    try {
+      const response = await fetch(`/api/cash/summary${toQueryString(summaryFilters)}`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Gagal memuat ringkasan kas.')
+      }
+
+      const data = (await response.json()) as CashSummary
+
+      set({
+        summary: data,
+      })
+    } catch (error) {
+      set({
         error: error instanceof Error ? error.message : 'Terjadi kesalahan.',
       })
     }
@@ -136,6 +162,7 @@ export const useCashStore = create<CashStore>((set, get) => ({
       }
 
       await get().fetchTransactions(get().filters)
+      await get().fetchSummary(get().summaryFilters)
 
       set({
         isSubmitting: false,
@@ -172,6 +199,7 @@ export const useCashStore = create<CashStore>((set, get) => ({
       }
 
       await get().fetchTransactions(get().filters)
+      await get().fetchSummary(get().summaryFilters)
 
       set({
         isSubmitting: false,

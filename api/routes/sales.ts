@@ -38,11 +38,58 @@ function buildWhereClause(startDate?: string, endDate?: string) {
   }
 }
 
+function formatDateValue(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return localDate.toISOString().slice(0, 10)
+}
+
+function getCurrentMonthFilters() {
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+  return {
+    startDate: formatDateValue(monthStart),
+    endDate: formatDateValue(monthEnd),
+  }
+}
+
+function getRequestedFilters(req: Request, useCurrentMonthByDefault = false) {
+  const requestFilters = {
+    startDate: typeof req.query.startDate === 'string' ? req.query.startDate : undefined,
+    endDate: typeof req.query.endDate === 'string' ? req.query.endDate : undefined,
+  }
+
+  if (requestFilters.startDate || requestFilters.endDate || !useCurrentMonthByDefault) {
+    return requestFilters
+  }
+
+  return getCurrentMonthFilters()
+}
+
+router.get('/summary', async (req: Request, res: Response): Promise<void> => {
+  const { startDate, endDate } = getRequestedFilters(req, true)
+  const { values, whereSql } = buildWhereClause(startDate, endDate)
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          COALESCE(SUM(jumlah), 0) AS total_penjualan
+        FROM penjualan
+        ${whereSql}
+      `,
+      values,
+    )
+
+    res.status(200).json(normalizeSummary(result.rows[0]))
+  } catch {
+    res.status(500).json({ message: 'Gagal mengambil ringkasan penjualan.' })
+  }
+})
+
 router.get('/transactions', async (req: Request, res: Response): Promise<void> => {
-  const startDate =
-    typeof req.query.startDate === 'string' ? req.query.startDate : undefined
-  const endDate =
-    typeof req.query.endDate === 'string' ? req.query.endDate : undefined
+  const { startDate, endDate } = getRequestedFilters(req)
   const { values, whereSql } = buildWhereClause(startDate, endDate)
 
   try {

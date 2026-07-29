@@ -11,18 +11,22 @@ import { TransactionTable } from '@/components/TransactionTable'
 import { useAuthStore } from '@/hooks/useAuthStore'
 import { useCashStore } from '@/hooks/useCashStore'
 import { useSalesStore } from '@/hooks/useSalesStore'
+import { getCurrentMonthFilters, getTodayFilters } from '@/utils/format'
 
 export default function Home() {
   const {
     items: cashItems,
     summary,
     filters: cashFilters,
+    summaryFilters: cashSummaryFilters,
     isLoading: isCashLoading,
     isSubmitting: isCashSubmitting,
     error: cashError,
     successMessage: cashSuccessMessage,
     fetchTransactions,
+    fetchSummary,
     setFilters,
+    setSummaryFilters,
     createTransaction,
     updateTransaction,
     clearFeedback,
@@ -30,12 +34,16 @@ export default function Home() {
   const {
     items: salesItems,
     summary: salesSummary,
+    filters: salesFilters,
+    summaryFilters: salesSummaryFilters,
     isLoading: isSalesLoading,
     isSubmitting: isSalesSubmitting,
     error: salesError,
     successMessage: salesSuccessMessage,
     fetchSales,
+    fetchSalesSummary,
     setFilters: setSalesFilters,
+    setSummaryFilters: setSalesSummaryFilters,
     createSale,
     clearFeedback: clearSalesFeedback,
   } = useSalesStore()
@@ -48,8 +56,10 @@ export default function Home() {
 
   useEffect(() => {
     void fetchTransactions(cashFilters)
-    void fetchSales(cashFilters)
-  }, [fetchSales, fetchTransactions])
+    void fetchSummary(cashSummaryFilters)
+    void fetchSales(salesFilters)
+    void fetchSalesSummary(salesSummaryFilters)
+  }, [cashFilters, cashSummaryFilters, fetchSales, fetchSalesSummary, fetchSummary, fetchTransactions, salesFilters, salesSummaryFilters])
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(20,83,45,0.12),_transparent_35%),linear-gradient(180deg,#f6f0e6_0%,#fbfaf7_45%,#f1ece3_100%)] px-3 py-4 text-zinc-950 sm:px-4 sm:py-6 md:px-8">
@@ -92,13 +102,7 @@ export default function Home() {
             isSubmitting={isSubmitting}
             onSubmit={async (type, payload) => {
               if (type === 'penjualan') {
-                const ok = await createSale(payload as CreateSaleRequest)
-
-                if (ok) {
-                  await fetchTransactions(cashFilters)
-                }
-
-                return ok
+                return createSale(payload as CreateSaleRequest)
               }
 
               return createTransaction(payload as CreateCashTransactionRequest)
@@ -164,9 +168,18 @@ export default function Home() {
             filters={cashFilters}
             onApply={(nextFilters) => {
               setFilters(nextFilters)
+              setSummaryFilters(nextFilters)
               setSalesFilters(nextFilters)
-              void fetchTransactions(nextFilters)
-              void fetchSales(nextFilters)
+              setSalesSummaryFilters(nextFilters)
+            }}
+            onReset={() => {
+              const nextHistoryFilters = getTodayFilters()
+              const nextSummaryFilters = getCurrentMonthFilters()
+
+              setFilters(nextHistoryFilters)
+              setSummaryFilters(nextSummaryFilters)
+              setSalesFilters(nextHistoryFilters)
+              setSalesSummaryFilters(nextSummaryFilters)
             }}
           />
         </section>

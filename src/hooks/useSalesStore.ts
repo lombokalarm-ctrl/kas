@@ -7,32 +7,26 @@ import type {
   SaleItem,
 } from '../../shared/sales'
 import { getStoredToken } from '@/lib/auth-storage'
-import { todayValue } from '@/utils/format'
+import { getCurrentMonthFilters, getTodayFilters } from '@/utils/format'
 
 const defaultSummary: SalesSummary = {
   totalPenjualan: 0,
-}
-
-function getDefaultFilters(): CashFilters {
-  const today = todayValue()
-
-  return {
-    startDate: today,
-    endDate: today,
-  }
 }
 
 interface SalesStore {
   items: SaleItem[]
   summary: SalesSummary
   filters: CashFilters
+  summaryFilters: CashFilters
   isLoading: boolean
   isSubmitting: boolean
   error: string | null
   successMessage: string | null
   setFilters: (filters: CashFilters) => void
+  setSummaryFilters: (filters: CashFilters) => void
   clearFeedback: () => void
   fetchSales: (filters?: CashFilters) => Promise<void>
+  fetchSalesSummary: (filters?: CashFilters) => Promise<void>
   createSale: (payload: CreateSaleRequest) => Promise<boolean>
 }
 
@@ -64,13 +58,17 @@ function getAuthHeaders() {
 export const useSalesStore = create<SalesStore>((set, get) => ({
   items: [],
   summary: defaultSummary,
-  filters: getDefaultFilters(),
+  filters: getTodayFilters(),
+  summaryFilters: getCurrentMonthFilters(),
   isLoading: false,
   isSubmitting: false,
   error: null,
   successMessage: null,
   setFilters: (filters) => {
     set({ filters })
+  },
+  setSummaryFilters: (filters) => {
+    set({ summaryFilters: filters })
   },
   clearFeedback: () => {
     set({ error: null, successMessage: null })
@@ -109,6 +107,36 @@ export const useSalesStore = create<SalesStore>((set, get) => ({
       })
     }
   },
+  fetchSalesSummary: async (nextFilters) => {
+    const summaryFilters = nextFilters ?? get().summaryFilters
+
+    set({
+      error: null,
+      summaryFilters,
+    })
+
+    try {
+      const response = await fetch(`/api/sales/summary${toQueryString(summaryFilters)}`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      })
+
+      const data = (await response.json()) as SalesSummary & { message?: string }
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Gagal memuat ringkasan penjualan.')
+      }
+
+      set({
+        summary: data,
+      })
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Terjadi kesalahan.',
+      })
+    }
+  },
   createSale: async (payload) => {
     set({ isSubmitting: true, error: null, successMessage: null })
 
@@ -128,6 +156,7 @@ export const useSalesStore = create<SalesStore>((set, get) => ({
       }
 
       await get().fetchSales(get().filters)
+      await get().fetchSalesSummary(get().summaryFilters)
 
       set({
         isSubmitting: false,
