@@ -248,11 +248,6 @@ export default function Home() {
             }}
             minDate={isStaff ? currentMonthFilters.startDate : undefined}
             maxDate={isStaff ? currentMonthFilters.endDate : undefined}
-            helperText={
-              isStaff
-                ? 'Staff hanya bisa melihat riwayat pada bulan berjalan. Saldo mengikuti filter aktif, sedangkan total masuk, keluar, dan penjualan selalu hari ini.'
-                : undefined
-            }
           />
         </section>
 

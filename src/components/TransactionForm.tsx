@@ -137,7 +137,6 @@ export function TransactionForm({
             required
             disabled={isStaff}
           />
-          {isStaff && <p className="text-[11px] text-zinc-500">Tanggal staff selalu mengikuti hari ini.</p>}
         </label>
 
         <div className="space-y-1.5 text-xs text-zinc-700 sm:space-y-2 sm:text-sm">
