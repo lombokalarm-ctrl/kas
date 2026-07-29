@@ -42,6 +42,11 @@ function getTodayValue() {
   return toDateValue(new Date())
 }
 
+function getCurrentMonthStartValue() {
+  const now = new Date()
+  return toDateValue(new Date(now.getFullYear(), now.getMonth(), 1))
+}
+
 function getPreviousMonthValue() {
   const now = new Date()
   return toDateValue(new Date(now.getFullYear(), now.getMonth() - 1, 15))
@@ -102,7 +107,7 @@ describe('salesRoutes', () => {
     expect(response.body.message).toMatch(/belum lengkap/i)
   })
 
-  it('menolak staff melihat ringkasan penjualan', async () => {
+  it('mengizinkan staff melihat ringkasan penjualan untuk hari ini', async () => {
     authUserMock.current = {
       id: 2,
       username: 'staff',
@@ -110,14 +115,60 @@ describe('salesRoutes', () => {
       role: 'staff',
     }
 
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          total_penjualan: 12000,
+        },
+      ],
+    })
+
     const response = await request(app).get('/api/sales/summary')
 
-    expect(response.status).toBe(403)
-    expect(response.body.message).toMatch(/ringkasan penjualan/i)
-    expect(queryMock).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    expect(response.body.totalPenjualan).toBe(12000)
   })
 
-  it('menolak staff melihat riwayat penjualan', async () => {
+  it('mengizinkan staff melihat riwayat penjualan pada bulan berjalan', async () => {
+    authUserMock.current = {
+      id: 2,
+      username: 'staff',
+      namaLengkap: 'Staff',
+      role: 'staff',
+    }
+
+    queryMock
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            tanggal: getTodayValue(),
+            hari: 'Selasa',
+            keterangan: 'Penjualan tunai',
+            jumlah: 12000,
+            created_at: '2026-07-29T00:00:00.000Z',
+            updated_at: '2026-07-29T00:00:00.000Z',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            total_penjualan: 12000,
+          },
+        ],
+      })
+
+    const response = await request(app)
+      .get('/api/sales/transactions')
+      .query({ startDate: getCurrentMonthStartValue(), endDate: getTodayValue() })
+
+    expect(response.status).toBe(200)
+    expect(response.body.items).toHaveLength(1)
+    expect(response.body.summary.totalPenjualan).toBe(12000)
+  })
+
+  it('menolak staff melihat riwayat penjualan di luar bulan berjalan', async () => {
     authUserMock.current = {
       id: 2,
       username: 'staff',
@@ -127,10 +178,10 @@ describe('salesRoutes', () => {
 
     const response = await request(app)
       .get('/api/sales/transactions')
-      .query({ startDate: getTodayValue(), endDate: getTodayValue() })
+      .query({ startDate: getPreviousMonthValue(), endDate: getTodayValue() })
 
     expect(response.status).toBe(403)
-    expect(response.body.message).toMatch(/riwayat penjualan/i)
+    expect(response.body.message).toMatch(/bulan berjalan/i)
     expect(queryMock).not.toHaveBeenCalled()
   })
 

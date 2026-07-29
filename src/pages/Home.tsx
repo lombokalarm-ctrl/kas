@@ -50,13 +50,13 @@ export default function Home() {
   const { user, logout } = useAuthStore()
   const [historyTab, setHistoryTab] = useState<'transaksi' | 'penjualan'>('transaksi')
   const isStaff = user?.role === 'staff'
-  const canAccessSales = user?.role !== 'staff'
+  const canAccessSalesSummary = user?.role !== 'staff'
   const todayFilters = useMemo(() => getTodayFilters(), [])
   const currentMonthFilters = useMemo(() => getCurrentMonthFilters(), [])
 
   const isSubmitting = isCashSubmitting || isSalesSubmitting
-  const feedbackError = cashError || (canAccessSales ? salesError : null)
-  const successMessage = (canAccessSales ? salesSuccessMessage : null) || cashSuccessMessage
+  const feedbackError = cashError || salesError
+  const successMessage = salesSuccessMessage || cashSuccessMessage
 
   useEffect(() => {
     if (!user) {
@@ -69,8 +69,24 @@ export default function Home() {
       setSalesFilters(todayFilters)
       setSalesSummaryFilters(todayFilters)
       setHistoryTab('transaksi')
+      return
     }
-  }, [isStaff, setFilters, setSalesFilters, setSalesSummaryFilters, setSummaryFilters, todayFilters, user])
+
+    setFilters(todayFilters)
+    setSummaryFilters(currentMonthFilters)
+    setSalesFilters(todayFilters)
+    setSalesSummaryFilters(currentMonthFilters)
+    setHistoryTab('transaksi')
+  }, [
+    currentMonthFilters,
+    isStaff,
+    setFilters,
+    setSalesFilters,
+    setSalesSummaryFilters,
+    setSummaryFilters,
+    todayFilters,
+    user,
+  ])
 
   useEffect(() => {
     if (!user) {
@@ -79,13 +95,13 @@ export default function Home() {
 
     void fetchTransactions(cashFilters)
     void fetchSummary(cashSummaryFilters)
+    void fetchSales(salesFilters)
 
-    if (canAccessSales) {
-      void fetchSales(salesFilters)
+    if (canAccessSalesSummary) {
       void fetchSalesSummary(salesSummaryFilters)
     }
   }, [
-    canAccessSales,
+    canAccessSalesSummary,
     cashFilters,
     cashSummaryFilters,
     fetchSales,
@@ -212,9 +228,9 @@ export default function Home() {
             onApply={(nextFilters) => {
               setFilters(nextFilters)
               setSummaryFilters(nextFilters)
+              setSalesFilters(nextFilters)
 
-              if (canAccessSales) {
-                setSalesFilters(nextFilters)
+              if (canAccessSalesSummary) {
                 setSalesSummaryFilters(nextFilters)
               }
             }}
@@ -224,9 +240,9 @@ export default function Home() {
 
               setFilters(nextHistoryFilters)
               setSummaryFilters(nextSummaryFilters)
+              setSalesFilters(nextHistoryFilters)
 
-              if (canAccessSales) {
-                setSalesFilters(nextHistoryFilters)
+              if (canAccessSalesSummary) {
                 setSalesSummaryFilters(nextSummaryFilters)
               }
             }}
@@ -240,7 +256,7 @@ export default function Home() {
           />
         </section>
 
-        {canAccessSales && (
+        {user && (
           <section className="mb-4 sm:mb-6">
             <div className="grid grid-cols-2 rounded-xl bg-zinc-100 p-1 sm:w-fit sm:rounded-2xl">
               <button
@@ -270,7 +286,7 @@ export default function Home() {
         )}
 
         {user &&
-          (!canAccessSales || historyTab === 'transaksi' ? (
+          (historyTab === 'transaksi' ? (
             <TransactionTable
               items={cashItems}
               isLoading={isCashLoading}

@@ -81,12 +81,58 @@ function getTodayFilters() {
   }
 }
 
+function isWithinRange(value: string, startDate?: string, endDate?: string) {
+  return (!startDate || value >= startDate) && (!endDate || value <= endDate)
+}
+
 function validateDateRange(filters: DateFilters) {
   if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
     return 'Rentang tanggal tidak valid.'
   }
 
   return null
+}
+
+function resolveStaffTransactionFilters(req: AuthenticatedRequest, res: Response) {
+  const requestedFilters = getRequestedFilters(req)
+  const rangeError = validateDateRange(requestedFilters)
+
+  if (rangeError) {
+    res.status(400).json({ message: rangeError })
+    return null
+  }
+
+  if (req.user?.role !== 'staff') {
+    return requestedFilters
+  }
+
+  if (!requestedFilters.startDate && !requestedFilters.endDate) {
+    return getTodayFilters()
+  }
+
+  const currentMonthFilters = getCurrentMonthFilters()
+
+  if (
+    (requestedFilters.startDate &&
+      !isWithinRange(
+        requestedFilters.startDate,
+        currentMonthFilters.startDate,
+        currentMonthFilters.endDate,
+      )) ||
+    (requestedFilters.endDate &&
+      !isWithinRange(
+        requestedFilters.endDate,
+        currentMonthFilters.startDate,
+        currentMonthFilters.endDate,
+      ))
+  ) {
+    res.status(403).json({
+      message: 'Staff hanya boleh melihat riwayat penjualan pada bulan berjalan.',
+    })
+    return null
+  }
+
+  return requestedFilters
 }
 
 function isStaffLockedToToday(req: AuthenticatedRequest, tanggal: string) {
@@ -98,12 +144,9 @@ function isStaffLockedToToday(req: AuthenticatedRequest, tanggal: string) {
 }
 
 router.get('/summary', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  if (req.user?.role === 'staff') {
-    res.status(403).json({ message: 'Staff tidak diizinkan melihat ringkasan penjualan.' })
-    return
-  }
-
-  const { startDate, endDate } = getRequestedFilters(req, true)
+  const filters =
+    req.user?.role === 'staff' ? getTodayFilters() : getRequestedFilters(req, true)
+  const { startDate, endDate } = filters
   const { values, whereSql } = buildWhereClause(startDate, endDate)
 
   try {
@@ -124,20 +167,13 @@ router.get('/summary', async (req: AuthenticatedRequest, res: Response): Promise
 })
 
 router.get('/transactions', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  if (req.user?.role === 'staff') {
-    res.status(403).json({ message: 'Staff tidak diizinkan melihat riwayat penjualan.' })
+  const staffAwareFilters = resolveStaffTransactionFilters(req, res)
+
+  if (!staffAwareFilters) {
     return
   }
 
-  const requestedFilters = getRequestedFilters(req)
-  const rangeError = validateDateRange(requestedFilters)
-
-  if (rangeError) {
-    res.status(400).json({ message: rangeError })
-    return
-  }
-
-  const { startDate, endDate } = requestedFilters
+  const { startDate, endDate } = staffAwareFilters
   const { values, whereSql } = buildWhereClause(startDate, endDate)
 
   try {
