@@ -158,4 +158,40 @@ describe('authRoutes', () => {
     expect(response.body.username).toBe('staff1')
     expect(response.body.namaLengkap).toBe('Staff Baru')
   })
+
+  it('menghapus user oleh owner', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [{ id: 2 }],
+      rowCount: 1,
+    })
+
+    const token = signAuthToken({
+      id: 1,
+      username: 'owner',
+      namaLengkap: 'Pemilik',
+      role: 'owner',
+    })
+
+    const response = await request(app)
+      .delete('/api/auth/users/2')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(response.status).toBe(204)
+  })
+
+  it('menolak owner menghapus akunnya sendiri', async () => {
+    const token = signAuthToken({
+      id: 1,
+      username: 'owner',
+      namaLengkap: 'Pemilik',
+      role: 'owner',
+    })
+
+    const response = await request(app)
+      .delete('/api/auth/users/1')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(response.status).toBe(400)
+    expect(response.body.message).toContain('sedang dipakai')
+  })
 })

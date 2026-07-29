@@ -291,6 +291,45 @@ router.put(
   },
 )
 
+router.delete(
+  '/users/:id',
+  requireAuth,
+  requireRoles(['owner']),
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const userId = Number(req.params.id)
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      res.status(400).json({ message: 'ID user tidak valid.' })
+      return
+    }
+
+    if (req.user?.id === userId) {
+      res.status(400).json({ message: 'Owner tidak bisa menghapus akun yang sedang dipakai.' })
+      return
+    }
+
+    try {
+      const result = await pool.query<{ id: number }>(
+        `
+          DELETE FROM users
+          WHERE id = $1
+          RETURNING id
+        `,
+        [userId],
+      )
+
+      if (!result.rowCount) {
+        res.status(404).json({ message: 'User tidak ditemukan.' })
+        return
+      }
+
+      res.status(204).send()
+    } catch {
+      res.status(500).json({ message: 'Gagal menghapus user.' })
+    }
+  },
+)
+
 router.post('/logout', async (_req: Request, res: Response): Promise<void> => {
   res.status(204).send()
 })

@@ -17,6 +17,7 @@ export default function OwnerUsers() {
     fetchUsers,
     createUser,
     updateUser,
+    deleteUser,
     clearFeedback,
   } = useUserManagementStore()
   const [form, setForm] = useState({
@@ -73,6 +74,24 @@ export default function OwnerUsers() {
     })
 
     if (ok) {
+      setEditingUserId(null)
+      setEditForm({
+        namaLengkap: '',
+        password: '',
+      })
+    }
+  }
+
+  async function handleDeleteUser(userId: number, username: string) {
+    const shouldDelete = window.confirm(`Hapus user ${username}? Tindakan ini tidak bisa dibatalkan.`)
+
+    if (!shouldDelete) {
+      return
+    }
+
+    const ok = await deleteUser(userId)
+
+    if (ok && editingUserId === userId) {
       setEditingUserId(null)
       setEditForm({
         namaLengkap: '',
@@ -234,6 +253,14 @@ export default function OwnerUsers() {
                         className="rounded-lg border border-zinc-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-700"
                       >
                         {editingUserId === item.id ? 'Tutup' : 'Edit'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteUser(item.id, item.username)}
+                        disabled={isSubmitting || item.id === user.id}
+                        className="rounded-lg border border-rose-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Hapus
                       </button>
                     </div>
                   </div>

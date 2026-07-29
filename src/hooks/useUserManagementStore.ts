@@ -11,6 +11,7 @@ interface UserManagementStore {
   fetchUsers: () => Promise<void>
   createUser: (payload: CreateUserRequest) => Promise<boolean>
   updateUser: (userId: number, payload: UpdateManagedUserRequest) => Promise<boolean>
+  deleteUser: (userId: number) => Promise<boolean>
   clearFeedback: () => void
 }
 
@@ -117,6 +118,39 @@ export const useUserManagementStore = create<UserManagementStore>((set, get) => 
       set({
         isSubmitting: false,
         successMessage: 'User berhasil diperbarui.',
+      })
+
+      return true
+    } catch (error) {
+      set({
+        isSubmitting: false,
+        error: error instanceof Error ? error.message : 'Terjadi kesalahan.',
+      })
+
+      return false
+    }
+  },
+  deleteUser: async (userId) => {
+    set({ isSubmitting: true, error: null, successMessage: null })
+
+    try {
+      const response = await fetch(`/api/auth/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          ...getAuthHeaders(),
+        },
+      })
+
+      if (!response.ok) {
+        const data = (await response.json()) as { message?: string }
+        throw new Error(data.message || 'Gagal menghapus user.')
+      }
+
+      await get().fetchUsers()
+
+      set({
+        isSubmitting: false,
+        successMessage: 'User berhasil dihapus.',
       })
 
       return true
