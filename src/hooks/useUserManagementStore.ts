@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { CreateUserRequest, ManagedUser } from '../../shared/auth'
+import type { CreateUserRequest, ManagedUser, UpdateManagedUserRequest } from '../../shared/auth'
 import { getStoredToken } from '@/lib/auth-storage'
 
 interface UserManagementStore {
@@ -10,6 +10,7 @@ interface UserManagementStore {
   successMessage: string | null
   fetchUsers: () => Promise<void>
   createUser: (payload: CreateUserRequest) => Promise<boolean>
+  updateUser: (userId: number, payload: UpdateManagedUserRequest) => Promise<boolean>
   clearFeedback: () => void
 }
 
@@ -80,6 +81,42 @@ export const useUserManagementStore = create<UserManagementStore>((set, get) => 
       set({
         isSubmitting: false,
         successMessage: 'User berhasil ditambahkan.',
+      })
+
+      return true
+    } catch (error) {
+      set({
+        isSubmitting: false,
+        error: error instanceof Error ? error.message : 'Terjadi kesalahan.',
+      })
+
+      return false
+    }
+  },
+  updateUser: async (userId, payload) => {
+    set({ isSubmitting: true, error: null, successMessage: null })
+
+    try {
+      const response = await fetch(`/api/auth/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const data = (await response.json()) as { message?: string }
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Gagal memperbarui user.')
+      }
+
+      await get().fetchUsers()
+
+      set({
+        isSubmitting: false,
+        successMessage: 'User berhasil diperbarui.',
       })
 
       return true

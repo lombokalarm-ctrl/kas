@@ -118,4 +118,44 @@ describe('authRoutes', () => {
     expect(response.body.username).toBe('staff1')
     expect(response.body.role).toBe('staff')
   })
+
+  it('memperbarui nama user dan password oleh owner', async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        rows: [{ id: 2 }],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 2,
+            username: 'staff1',
+            nama_lengkap: 'Staff Baru',
+            role: 'staff',
+            is_active: true,
+            last_login_at: null,
+            created_at: '2026-07-28T10:00:00+00',
+          },
+        ],
+      })
+
+    const token = signAuthToken({
+      id: 1,
+      username: 'owner',
+      namaLengkap: 'Pemilik',
+      role: 'owner',
+    })
+
+    const response = await request(app)
+      .put('/api/auth/users/2')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        namaLengkap: 'Staff Baru',
+        password: 'rahasia2',
+      })
+
+    expect(response.status).toBe(200)
+    expect(response.body.username).toBe('staff1')
+    expect(response.body.namaLengkap).toBe('Staff Baru')
+  })
 })

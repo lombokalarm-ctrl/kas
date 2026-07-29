@@ -29,3 +29,8 @@ export interface CreateUserRequest {
   namaLengkap?: string
   role: UserRole
 }
+
+export interface UpdateManagedUserRequest {
+  namaLengkap?: string
+  password?: string
+}

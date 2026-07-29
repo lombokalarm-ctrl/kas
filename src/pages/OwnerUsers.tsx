@@ -16,6 +16,7 @@ export default function OwnerUsers() {
     successMessage,
     fetchUsers,
     createUser,
+    updateUser,
     clearFeedback,
   } = useUserManagementStore()
   const [form, setForm] = useState({
@@ -23,6 +24,11 @@ export default function OwnerUsers() {
     password: '',
     namaLengkap: '',
     role: 'staff' as UserRole,
+  })
+  const [editingUserId, setEditingUserId] = useState<number | null>(null)
+  const [editForm, setEditForm] = useState({
+    namaLengkap: '',
+    password: '',
   })
 
   useEffect(() => {
@@ -50,6 +56,27 @@ export default function OwnerUsers() {
         password: '',
         namaLengkap: '',
         role: 'staff',
+      })
+    }
+  }
+
+  async function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!editingUserId) {
+      return
+    }
+
+    const ok = await updateUser(editingUserId, {
+      namaLengkap: editForm.namaLengkap,
+      password: editForm.password || undefined,
+    })
+
+    if (ok) {
+      setEditingUserId(null)
+      setEditForm({
+        namaLengkap: '',
+        password: '',
       })
     }
   }
@@ -191,14 +218,84 @@ export default function OwnerUsers() {
                       <p className="text-sm font-semibold text-zinc-900">{item.username}</p>
                       <p className="text-xs text-zinc-500">{item.namaLengkap || '-'}</p>
                     </div>
-                    <span className="rounded-full bg-zinc-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-700">
-                      {item.role}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-zinc-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-700">
+                        {item.role}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingUserId((current) => (current === item.id ? null : item.id))
+                          setEditForm({
+                            namaLengkap: item.namaLengkap || '',
+                            password: '',
+                          })
+                        }}
+                        className="rounded-lg border border-zinc-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-700"
+                      >
+                        {editingUserId === item.id ? 'Tutup' : 'Edit'}
+                      </button>
+                    </div>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-zinc-500 sm:flex sm:flex-wrap sm:gap-4">
                     <span>Status: {item.isActive ? 'aktif' : 'nonaktif'}</span>
                     <span>Login akhir: {item.lastLoginAt ? item.lastLoginAt : '-'}</span>
                   </div>
+                  {editingUserId === item.id && (
+                    <form onSubmit={handleEditSubmit} className="mt-3 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-2">
+                      <label className="space-y-1.5 text-xs text-zinc-700 sm:text-sm">
+                        <span>Nama lengkap</span>
+                        <input
+                          type="text"
+                          value={editForm.namaLengkap}
+                          onChange={(event) =>
+                            setEditForm((current) => ({
+                              ...current,
+                              namaLengkap: event.target.value,
+                            }))
+                          }
+                          className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-700"
+                        />
+                      </label>
+                      <label className="space-y-1.5 text-xs text-zinc-700 sm:text-sm">
+                        <span>Password baru</span>
+                        <input
+                          type="password"
+                          value={editForm.password}
+                          onChange={(event) =>
+                            setEditForm((current) => ({
+                              ...current,
+                              password: event.target.value,
+                            }))
+                          }
+                          placeholder="Kosongkan jika tidak diganti"
+                          className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-700"
+                        />
+                      </label>
+                      <div className="sm:col-span-2 flex gap-2">
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="rounded-xl bg-zinc-950 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isSubmitting ? 'Menyimpan...' : 'Simpan perubahan'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingUserId(null)
+                            setEditForm({
+                              namaLengkap: '',
+                              password: '',
+                            })
+                          }}
+                          className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-700"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </article>
               ))}
             </div>

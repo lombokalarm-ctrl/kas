@@ -13,10 +13,31 @@ import type {
   LoginRequest,
   LoginResponse,
   ManagedUser,
+  UpdateManagedUserRequest,
   UserRole,
 } from '../../shared/auth.js'
 
 const router = Router()
+
+function normalizeManagedUser(row: {
+  id: number
+  username: string
+  nama_lengkap: string | null
+  role: UserRole
+  is_active: boolean
+  last_login_at: string | null
+  created_at: string
+}): ManagedUser {
+  return {
+    id: row.id,
+    username: row.username,
+    namaLengkap: row.nama_lengkap,
+    role: row.role,
+    isActive: row.is_active,
+    lastLoginAt: row.last_login_at,
+    createdAt: row.created_at,
+  }
+}
 
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
   const body = req.body as LoginRequest
@@ -107,15 +128,7 @@ router.get(
         ORDER BY role DESC, username ASC
       `)
 
-      const items: ManagedUser[] = result.rows.map((row) => ({
-        id: row.id,
-        username: row.username,
-        namaLengkap: row.nama_lengkap,
-        role: row.role,
-        isActive: row.is_active,
-        lastLoginAt: row.last_login_at,
-        createdAt: row.created_at,
-      }))
+      const items: ManagedUser[] = result.rows.map((row) => normalizeManagedUser(row))
 
       res.status(200).json({ items })
     } catch {
@@ -177,15 +190,7 @@ router.post(
       )
 
       const row = result.rows[0]
-      const item: ManagedUser = {
-        id: row.id,
-        username: row.username,
-        namaLengkap: row.nama_lengkap,
-        role: row.role,
-        isActive: row.is_active,
-        lastLoginAt: row.last_login_at,
-        createdAt: row.created_at,
-      }
+      const item: ManagedUser = normalizeManagedUser(row)
 
       res.status(201).json(item)
     } catch (error) {
@@ -201,6 +206,87 @@ router.post(
       }
 
       res.status(500).json({ message: 'Gagal menambah user.' })
+    }
+  },
+)
+
+router.put(
+  '/users/:id',
+  requireAuth,
+  requireRoles(['owner']),
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const userId = Number(req.params.id)
+    const body = req.body as UpdateManagedUserRequest
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      res.status(400).json({ message: 'ID user tidak valid.' })
+      return
+    }
+
+    const nextNamaLengkap =
+      typeof body.namaLengkap === 'string' ? body.namaLengkap.trim() : undefined
+    const nextPassword = typeof body.password === 'string' ? body.password.trim() : undefined
+
+    if (nextNamaLengkap === undefined && nextPassword === undefined) {
+      res.status(400).json({ message: 'Tidak ada perubahan yang dikirim.' })
+      return
+    }
+
+    if (nextPassword !== undefined && nextPassword.length > 0 && nextPassword.length < 6) {
+      res.status(400).json({ message: 'Password minimal 6 karakter.' })
+      return
+    }
+
+    try {
+      const existingResult = await pool.query<{ id: number }>(
+        `
+          SELECT id
+          FROM users
+          WHERE id = $1
+          LIMIT 1
+        `,
+        [userId],
+      )
+
+      if (!existingResult.rowCount) {
+        res.status(404).json({ message: 'User tidak ditemukan.' })
+        return
+      }
+
+      const result = await pool.query<{
+        id: number
+        username: string
+        nama_lengkap: string | null
+        role: UserRole
+        is_active: boolean
+        last_login_at: string | null
+        created_at: string
+      }>(
+        `
+          UPDATE users
+          SET
+            nama_lengkap = COALESCE($1, nama_lengkap),
+            password_hash = COALESCE($2, password_hash)
+          WHERE id = $3
+          RETURNING
+            id,
+            username,
+            nama_lengkap,
+            role,
+            is_active,
+            TO_CHAR(last_login_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') AS last_login_at,
+            TO_CHAR(created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') AS created_at
+        `,
+        [
+          nextNamaLengkap === undefined ? null : nextNamaLengkap || null,
+          nextPassword ? hashPassword(nextPassword) : null,
+          userId,
+        ],
+      )
+
+      res.status(200).json(normalizeManagedUser(result.rows[0]))
+    } catch {
+      res.status(500).json({ message: 'Gagal memperbarui user.' })
     }
   },
 )
