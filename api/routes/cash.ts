@@ -102,10 +102,6 @@ function validateDateRange(filters: DateFilters) {
 }
 
 function resolveStaffSummaryFilters(req: AuthenticatedRequest, res: Response) {
-  if (req.user?.role !== 'staff') {
-    return getRequestedFilters(req, true)
-  }
-
   const requestedFilters = getRequestedFilters(req)
   const rangeError = validateDateRange(requestedFilters)
 
@@ -114,8 +110,12 @@ function resolveStaffSummaryFilters(req: AuthenticatedRequest, res: Response) {
     return null
   }
 
+  if (req.user?.role !== 'staff') {
+    return requestedFilters
+  }
+
   if (!requestedFilters.startDate && !requestedFilters.endDate) {
-    return getTodayFilters()
+    return requestedFilters
   }
 
   const currentMonthFilters = getCurrentMonthFilters()
@@ -141,6 +141,14 @@ function resolveStaffSummaryFilters(req: AuthenticatedRequest, res: Response) {
   }
 
   return requestedFilters
+}
+
+function resolveTotalSummaryFilters(req: AuthenticatedRequest) {
+  if (req.user?.role === 'staff') {
+    return getTodayFilters()
+  }
+
+  return getRequestedFilters(req, true)
 }
 
 function resolveStaffTransactionFilters(req: AuthenticatedRequest, res: Response) {
@@ -194,14 +202,20 @@ function isStaffLockedToToday(req: AuthenticatedRequest, tanggal: string) {
 }
 
 router.get('/summary', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const staffAwareFilters = resolveStaffSummaryFilters(req, res)
+  const saldoFilters = resolveStaffSummaryFilters(req, res)
 
-  if (!staffAwareFilters) {
+  if (!saldoFilters) {
     return
   }
 
-  const { startDate, endDate } = staffAwareFilters
+  const { startDate, endDate } = saldoFilters
   const { values, whereSql } = buildWhereClause(startDate, endDate)
+  const totalFilters = resolveTotalSummaryFilters(req)
+  const { values: totalValues, whereSql: totalWhereSql } = buildWhereClause(
+    totalFilters.startDate,
+    totalFilters.endDate,
+    values.length,
+  )
 
   try {
     const result =
@@ -249,20 +263,25 @@ router.get('/summary', async (req: AuthenticatedRequest, res: Response): Promise
                 FROM kas_transaksi
                 ${whereSql}
               ),
+              total_kas AS (
+                SELECT *
+                FROM kas_transaksi
+                ${totalWhereSql}
+              ),
               filtered_penjualan AS (
                 SELECT *
                 FROM penjualan
-                ${whereSql}
+                ${totalWhereSql}
               )
               SELECT
                 COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
                   - COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
                   AS saldo_terakhir,
-                COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_masuk,
-                COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_keluar,
+                COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM total_kas), 0) AS total_masuk,
+                COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM total_kas), 0) AS total_keluar,
                 COALESCE((SELECT SUM(jumlah) FROM filtered_penjualan), 0) AS total_penjualan
             `,
-            values,
+            [...values, ...totalValues],
           )
 
     res.status(200).json(normalizeSummary(result.rows[0]))
@@ -280,6 +299,12 @@ router.get('/transactions', async (req: AuthenticatedRequest, res: Response): Pr
 
   const { startDate, endDate } = staffAwareFilters
   const { values, whereSql } = buildWhereClause(startDate, endDate)
+  const totalFilters = resolveTotalSummaryFilters(req)
+  const { values: totalValues, whereSql: totalWhereSql } = buildWhereClause(
+    totalFilters.startDate,
+    totalFilters.endDate,
+    values.length,
+  )
 
   try {
     const itemsResult = await pool.query<CashTransaction>(
@@ -351,20 +376,25 @@ router.get('/transactions', async (req: AuthenticatedRequest, res: Response): Pr
                 FROM kas_transaksi
                 ${whereSql}
               ),
+              total_kas AS (
+                SELECT *
+                FROM kas_transaksi
+                ${totalWhereSql}
+              ),
               filtered_penjualan AS (
                 SELECT *
                 FROM penjualan
-                ${whereSql}
+                ${totalWhereSql}
               )
               SELECT
                 COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
                   - COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0)
                   AS saldo_terakhir,
-                COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_masuk,
-                COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM filtered_kas), 0) AS total_keluar,
+                COALESCE((SELECT SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) FROM total_kas), 0) AS total_masuk,
+                COALESCE((SELECT SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) FROM total_kas), 0) AS total_keluar,
                 COALESCE((SELECT SUM(jumlah) FROM filtered_penjualan), 0) AS total_penjualan
             `,
-            values,
+            [...values, ...totalValues],
           )
 
     const response: CashListResponse = {
