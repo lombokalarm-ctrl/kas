@@ -66,7 +66,7 @@ export const useCashStore = create<CashStore>((set, get) => ({
   items: [],
   summary: defaultSummary,
   filters: getTodayFilters(),
-  summaryFilters: getCurrentMonthFilters(),
+  summaryFilters: {},
   isLoading: false,
   isSubmitting: false,
   error: null,

@@ -73,7 +73,7 @@ export default function Home() {
     }
 
     setFilters(todayFilters)
-    setSummaryFilters(currentMonthFilters)
+    setSummaryFilters({})
     setSalesFilters(todayFilters)
     setSalesSummaryFilters(currentMonthFilters)
     setHistoryTab('transaksi')
@@ -236,14 +236,15 @@ export default function Home() {
             }}
             onReset={() => {
               const nextHistoryFilters = getTodayFilters()
-              const nextSummaryFilters = isStaff ? nextHistoryFilters : getCurrentMonthFilters()
+              const nextSummaryFilters = isStaff ? nextHistoryFilters : {}
+              const nextSalesSummaryFilters = isStaff ? nextHistoryFilters : getCurrentMonthFilters()
 
               setFilters(nextHistoryFilters)
               setSummaryFilters(nextSummaryFilters)
               setSalesFilters(nextHistoryFilters)
 
               if (canAccessSalesSummary) {
-                setSalesSummaryFilters(nextSummaryFilters)
+                setSalesSummaryFilters(nextSalesSummaryFilters)
               }
             }}
             minDate={isStaff ? currentMonthFilters.startDate : undefined}
